@@ -44,7 +44,7 @@ public class Main {
             if( msg.startsWith("*")){
                 in.readLine();
                 in.readLine();
-                out.print(resp+"/r/n");
+                out.print(resp+"\r\n");
                 out.flush();
             }else{
                 break;
