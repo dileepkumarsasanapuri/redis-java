@@ -36,22 +36,24 @@ public class Main {
         }
   }
   public static void handleClients(Socket clientSocket) {
-    String resp= "+PONG";
-    try(Socket socket=clientSocket;
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        PrintWriter out=new PrintWriter(socket.getOutputStream(),true);
-    ){
-        String msg;
-        while ((msg = in.readLine())!=null){
-            if( msg.startsWith("*")){
-                in.readLine();
-                in.readLine();
-                out.print(resp+"\r\n");
-                out.flush();
-            }else{
-                break;
-            }
-        }
+      try (Socket socket = clientSocket;
+           Scanner sc = new Scanner(socket.getInputStream());
+           OutputStream output = socket.getOutputStream()
+      ) {
+          while (sc.hasNextLine()) {
+              String command = sc.nextLine();
+              System.out.println("Received: " + command);
+              if (command.contains("PING")) {
+                  output.write("+PONG\r\n".getBytes());
+                  output.flush();
+              }
+              if(command.contains("ECHO")){
+                  String respHeader=sc.nextLine();
+                  String respBody=sc.nextLine();
+                  String respp= respHeader+"\r\n"+respBody+"\r\n";
+                  output.write(respp.getBytes());
+              }
+          }
     } catch (IOException e) {
         System.out.println("client disconnected: "+e.getMessage());
     }
