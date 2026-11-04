@@ -3,6 +3,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
   public static void main(String[] args){
@@ -10,6 +13,7 @@ public class Main {
         ServerSocket serverSocket = null;
         Socket clientSocket = null;
         int port = 6379;
+      ExecutorService executor= Executors.newFixedThreadPool(10);
         try {
           serverSocket = new ServerSocket(port);
           serverSocket.setReuseAddress(true);
@@ -17,9 +21,7 @@ public class Main {
           while(true) {
               clientSocket = serverSocket.accept();
               Socket finalClientSocket = clientSocket;
-              CompletableFuture.runAsync(() -> {
-                  handleClients(finalClientSocket);
-              });
+              executor.submit(() -> handleClients(finalClientSocket));
           }
         } catch (IOException e) {
           System.out.println("IOException: " + e.getMessage());
