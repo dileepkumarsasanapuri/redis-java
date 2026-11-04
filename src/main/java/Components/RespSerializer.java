@@ -40,8 +40,9 @@ public class RespSerializer {
         int i=0;
         while(i<dataArr.length){
             char cur=dataArr[i];
+            if(cur=='\u0000')
+                break;
             if(cur=='*'){
-
                 String arrLen="";
                 i++;
                 while(i<dataArr.length && Character.isDigit(dataArr[i])){
@@ -65,7 +66,6 @@ public class RespSerializer {
                     i=getParts(dataArr,i,subArray);
                     res.add(subArray);
                 }
-
             }
         }
         return  res;

@@ -17,7 +17,7 @@ import java.util.concurrent.Executors;
 public class TcpServer {
 
     @Autowired
-    private static RespSerializer respSerializer;
+    private RespSerializer respSerializer;
 
     public void startServer(){
 
@@ -57,7 +57,7 @@ public class TcpServer {
         }
     }
 
-    public static void handleClients(Client client) throws IOException {
+    public void handleClients(Client client) throws IOException {
         while(client.socket.isConnected()){
             byte [] buffer=new byte[client.socket.getReceiveBufferSize()];
             int bytesRead=client.inputStream.read(buffer);
@@ -66,7 +66,7 @@ public class TcpServer {
                 for( String [] s:res){
                     System.out.println();
                     for(String ss:s){
-                        System.out.println(ss);
+                        System.out.println(ss + " ");
                     }
                 }
             }
