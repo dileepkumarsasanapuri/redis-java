@@ -24,7 +24,10 @@ public class Main {
           InputStream inputStream=clientSocket.getInputStream();
             Scanner sc=new Scanner(inputStream);
             while(sc.hasNextLine()){
-                clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
+                String nextLine=sc.nextLine();
+                if(nextLine.contains("PING")) {
+                    clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
+                }
             }
 
         } catch (IOException e) {
