@@ -1,6 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
@@ -20,11 +18,7 @@ public class Main {
               clientSocket = serverSocket.accept();
               Socket finalClientSocket = clientSocket;
               CompletableFuture.runAsync(() -> {
-                  try {
-                      handleClients(finalClientSocket);
-                  } catch (IOException e) {
-                      throw new RuntimeException(e);
-                  }
+                  handleClients(finalClientSocket);
               });
           }
         } catch (IOException e) {
@@ -39,14 +33,26 @@ public class Main {
           }
         }
   }
-  public static void handleClients(Socket clientSocket) throws IOException {
-      InputStream inputStream=clientSocket.getInputStream();
-      Scanner sc=new Scanner(inputStream);
-      while(sc.hasNextLine()){
-          String nextLine=sc.nextLine();
-          if(nextLine.contains("PING")) {
-              clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
-          }
-      }
+  public static void handleClients(Socket clientSocket) {
+    String resp= "+PONG";
+    try(Socket socket=clientSocket;
+        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        PrintWriter out=new PrintWriter(socket.getOutputStream(),true);
+    ){
+        String msg;
+        while ((msg = in.readLine())!=null){
+            if( msg.startsWith("*")){
+                in.readLine();
+                in.readLine();
+                out.print(resp+"/r/n");
+                out.flush();
+            }else{
+                break;
+            }
+        }
+    } catch (IOException e) {
+        System.out.println("client disconnected: "+e.getMessage());
+    }
+
   }
 }
