@@ -3,6 +3,7 @@ package Components.Server;
 import Components.Infra.ConnectionPool;
 import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
+import Components.Service.ResponseDto;
 import Config.RedisConfig;
 import Components.Infra.Client;
 import org.slf4j.Logger;
@@ -158,6 +159,7 @@ public class SlaveTcpServer {
 
     private void handleCommand(String[] command, Client client) throws IOException {
         String res="";
+        byte [] data=null;
         switch (command[0].toLowerCase()){
             case "ping":
                 res=commandHandler.ping(command);
@@ -174,13 +176,16 @@ public class SlaveTcpServer {
             case "info":
                 res=commandHandler.info(command);
                 break;
-            case "replconf":
-                res=commandHandler.replconf(command, client);
+//            case "replconf":
+//                res=commandHandler.replconf(command, client);
+//                break;
+            case "psync":
+                ResponseDto resDto=commandHandler.psync(command,client);
+                res=resDto.response;
+                data= resDto.data;
                 break;
 
         }
-        if(res !=null && !res.equals(""))
-            client.outputStream.write(res.getBytes());
-
+      client.send(res,data);
     }
 }

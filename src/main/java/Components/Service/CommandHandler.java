@@ -11,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.Base64;
 
 
 @Component
 public class CommandHandler {
-    private static final Logger log =
-            LoggerFactory.getLogger(CommandHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(CommandHandler.class);
+    private static final String emptyRDBFile = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==";
+
     @Autowired
     private RespSerializer respSerializer;
 
@@ -109,13 +111,25 @@ public class CommandHandler {
         return "+OK\r\n";
     }
 
-    public String psync(String[] command, Client client) {
+    public byte[] concatenate(byte[] a, byte[] b) {
+        byte[] result = new byte[a.length + b.length];
+        System.arraycopy(a, 0, result, 0, a.length);
+        System.arraycopy(b, 0, result, a.length, b.length);
+        return result;
+    }
+    public ResponseDto psync(String[] command, Client client) {
         if(command[1].equalsIgnoreCase("?") && command[2].equalsIgnoreCase("-1")){
             String res= "+FULLRESYNC "+redisConfig.getMasterReplId()+" "+redisConfig.getMasterReplOffset()+"\r\n";
-            return res;
+
+            byte [] rdbFile= Base64.getDecoder().decode(emptyRDBFile);
+            String  len=rdbFile.length+"";
+            String  fullResHeader= res+"$"+len+"\r\n";
+            byte [] header= fullResHeader.getBytes();
+
+            return new ResponseDto(res,concatenate(header,rdbFile));
         }
         else{
-            return "+CONTINUE\r\n";
+            return new ResponseDto("+CONTINUE\r\n",null);
         }
     }
 }
