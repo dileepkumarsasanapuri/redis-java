@@ -96,8 +96,8 @@ public class SlaveTcpServer {
 
             // HANDSHAKE - part - 2: send the slave's port to the master
             String replconf= "*3\r\n$8\r\nREPLCONF\r\n$4\r\nlistening-port\r\n$"
-                    +String.valueOf(redisConfig.getPort()).length()+"\r\n"
-                    +redisConfig.getPort()+"\r\n";
+                    +(String.valueOf(redisConfig.getPort()).length()+"")+"\r\n"
+                    +(redisConfig.getPort()+"")+"\r\n";
 
             data = replconf.getBytes();
             outputStream.write(data);
