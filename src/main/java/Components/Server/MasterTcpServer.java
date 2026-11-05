@@ -125,7 +125,7 @@ public class MasterTcpServer {
                 res=commandHandler.replconf(command,client);
                 break;
             case "psync":
-              ResponseDto resDto=commandHandler.psync(command,client);
+              ResponseDto resDto=commandHandler.psync(command);
               res=resDto.response;
               data= resDto.data;
                 break;
