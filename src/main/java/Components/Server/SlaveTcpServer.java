@@ -168,8 +168,8 @@ public class SlaveTcpServer {
         String res="";
         switch (cmd) {
             case "set":
-                res=commandHandler.set(commandArray);
-                //CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
+                commandHandler.set(commandArray);
+                CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
                 break;
         }
         return res;
@@ -244,9 +244,6 @@ public class SlaveTcpServer {
             case "info":
                 res=commandHandler.info(command);
                 break;
-//            case "replconf":
-//                res=commandHandler.replconf(command, client);
-//                break;
             case "psync":
                 ResponseDto resDto=commandHandler.psync(command);
                 res=resDto.response;
