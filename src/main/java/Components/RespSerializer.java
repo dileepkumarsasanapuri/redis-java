@@ -33,7 +33,7 @@ public class RespSerializer {
                 for(int k=0;k<Integer.parseInt(partLen);k++){
                     part+=dataArr[i++];
                 }
-                i++;
+                i+=2;
                 subArray[j++]=part;
             }
         }
@@ -41,40 +41,46 @@ public class RespSerializer {
     }
 
     public List<String[]> deseriaize(byte[] command){
-        String data= new String(command, StandardCharsets.UTF_8);
-        char [] dataArr= data.toCharArray();
-        List<String[]> res=new ArrayList<>();
-        int i=0;
-        while(i<dataArr.length){
-            char cur=dataArr[i];
-            if(cur=='\u0000')
-                break;
-            if(cur=='*'){
-                String arrLen="";
-                i++;
-                while(i<dataArr.length && Character.isDigit(dataArr[i])){
-                    arrLen+=dataArr[i++];
-                }
-                i+=2;
-                if(dataArr[i]=='*'){
-                    for(int t=0;t<Integer.parseInt(arrLen);t++){
-                        String nested="";
-                        i++;
-                        while(i< dataArr.length && Character.isDigit(dataArr[i])){
-                            nested+=dataArr[i++];
+        List<String[]> res= null;
+        try {
+            String data= new String(command, StandardCharsets.UTF_8);
+            char [] dataArr= data.toCharArray();
+            res = new ArrayList<>();
+            int i=0;
+            while(i<dataArr.length){
+                char cur=dataArr[i];
+                if(cur=='\u0000')
+                    break;
+                if(cur=='*'){
+                    String arrLen="";
+                    i++;
+                    while(i<dataArr.length && Character.isDigit(dataArr[i])){
+                        arrLen+=dataArr[i++];
+                    }
+                    i+=2;
+                    if(dataArr[i]=='*'){
+                        for(int t=0;t<Integer.parseInt(arrLen);t++){
+                            String nested="";
+                            i++;
+                            while(i< dataArr.length && Character.isDigit(dataArr[i])){
+                                nested+=dataArr[i++];
+                            }
+                            i+=2;
+                            String []subArray= new String[Integer.parseInt(nested)];
+                            i=getParts(dataArr,i,subArray);
+                            res.add(subArray);
                         }
-                        i+=2;
-                        String []subArray= new String[Integer.parseInt(nested)];
+                    }else{
+                        String []subArray= new String[Integer.parseInt(arrLen)];
                         i=getParts(dataArr,i,subArray);
                         res.add(subArray);
                     }
-                }else{
-                    String []subArray= new String[Integer.parseInt(arrLen)];
-                    i=getParts(dataArr,i,subArray);
-                    res.add(subArray);
                 }
             }
+            return res;
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
-        return  res;
+        return  new ArrayList<>();
     }
 }

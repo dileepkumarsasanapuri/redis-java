@@ -24,7 +24,7 @@ public class Store {
 
     public String set(String key,String val, int ttl){
         LocalDateTime createdAt=LocalDateTime.now();
-        LocalDateTime expiresAt=createdAt.plusSeconds(ttl);
+        LocalDateTime expiresAt=LocalDateTime.MAX;
         Value value=new Value(val,createdAt,expiresAt);
         try {
             map.put(key, value);
@@ -35,16 +35,11 @@ public class Store {
     }
 
     public String get(String key){
-        Value val=map.get(key);
-        if(val==null){
-            return "$-1\r\n";
-        }
-        LocalDateTime now=LocalDateTime.now();
-        if(val.expiresAt.isAfter(now)){
-            return respSerializer.serialize(val.val);
-        }
-        else{
-            map.remove(key);
+        try{
+            Value value = map.get(key);
+            return respSerializer.serialize(value.val);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
             return "$-1\r\n";
         }
     }

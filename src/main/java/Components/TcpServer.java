@@ -73,8 +73,8 @@ public class TcpServer {
         }
     }
 
-    private void handleCommand(String[] command, Client client) {
-        String res;
+    private void handleCommand(String[] command, Client client) throws IOException {
+        String res="";
         switch (command[0].toLowerCase()){
             case "ping":
                 res=commandHandler.ping(command);
@@ -88,13 +88,9 @@ public class TcpServer {
             case "get":
                 res=commandHandler.get(command);
                 break;
-            default:
-                res="";
         }
-        try {
+        if(res !=null && !res.equals(""))
             client.outputStream.write(res.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
     }
 }
