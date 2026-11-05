@@ -108,4 +108,14 @@ public class CommandHandler {
         }
         return "+OK\r\n";
     }
+
+    public String psync(String[] command, Client client) {
+        if(command[1].equalsIgnoreCase("?") && command[2].equalsIgnoreCase("-1")){
+            String res= "+FULLRESYNC "+redisConfig.getMasterReplId()+" "+redisConfig.getMasterReplOffset()+"\r\n";
+            return res;
+        }
+        else{
+            return "+CONTINUE\r\n";
+        }
+    }
 }

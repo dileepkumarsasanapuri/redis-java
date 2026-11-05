@@ -177,6 +177,7 @@ public class SlaveTcpServer {
             case "replconf":
                 res=commandHandler.replconf(command, client);
                 break;
+
         }
         if(res !=null && !res.equals(""))
             client.outputStream.write(res.getBytes());

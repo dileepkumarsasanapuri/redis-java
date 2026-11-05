@@ -1,6 +1,7 @@
 package Components.Server;
 
 import Components.Infra.ConnectionPool;
+import Components.Infra.Slave;
 import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
 import Config.RedisConfig;
@@ -111,12 +112,18 @@ public class MasterTcpServer {
                 break;
             case "get":
                 res=commandHandler.get(command);
+                for(Slave s:connectionPool.getSlaves()){
+
+                }
                 break;
             case "info":
                 res=commandHandler.info(command);
                 break;
             case "replconf":
                 res=commandHandler.replconf(command,client);
+                break;
+            case "psync":
+                res=commandHandler.psync(command,client);
                 break;
         }
         if(res !=null && !res.equals(""))
