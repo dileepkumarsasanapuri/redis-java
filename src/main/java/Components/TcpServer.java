@@ -21,11 +21,10 @@ public class TcpServer {
     @Autowired
     private CommandHandler commandHandler;
 
-    public void startServer(){
+    public void startServer(int port){
 
         ServerSocket serverSocket = null;
         Socket clientSocket = null;
-        int port = 6379;
         ExecutorService executor= Executors.newFixedThreadPool(10);
         try {
             serverSocket = new ServerSocket(port);

@@ -12,6 +12,6 @@ public class Main {
               port=Integer.parseInt(args[++i]);
           }
       }
-      app.startServer();
+      app.startServer(port);
   }
 }
