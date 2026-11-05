@@ -2,6 +2,8 @@ package Components.Repository;
 
 import Components.Service.RespSerializer;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -10,11 +12,12 @@ import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Slf4j
+
 @Component
 public class Store {
     public ConcurrentHashMap<String , Value> map;
-
+    private static final Logger log =
+            LoggerFactory.getLogger(Store.class);
     @Autowired
     private RespSerializer respSerializer;
 

@@ -3,15 +3,18 @@ package Components.Service;
 import Components.Repository.Store;
 import Config.RedisConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 
-@Slf4j
+
 @Component
 public class CommandHandler {
-
+    private static final Logger log =
+            LoggerFactory.getLogger(CommandHandler.class);
     @Autowired
     private RespSerializer respSerializer;
 

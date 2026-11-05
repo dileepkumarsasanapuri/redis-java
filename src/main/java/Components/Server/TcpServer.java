@@ -4,6 +4,8 @@ import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
 import Infra.Client;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Slf4j
+
 @Component
 public class TcpServer {
 
@@ -24,7 +26,8 @@ public class TcpServer {
     private RespSerializer respSerializer;
     @Autowired
     private CommandHandler commandHandler;
-
+    private static final Logger log =
+            LoggerFactory.getLogger(TcpServer.class);
     public void startServer(int port){
 
         ServerSocket serverSocket = null;

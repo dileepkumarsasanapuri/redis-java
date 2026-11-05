@@ -1,16 +1,19 @@
 package Components.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
+
 @Component
 public class RespSerializer {
-
+    private static final Logger log =
+            LoggerFactory.getLogger(RespSerializer.class);
     public String serialize(String command){
         StringBuilder sb=new StringBuilder();
         sb.append("$"+command.length()+"\r\n");
