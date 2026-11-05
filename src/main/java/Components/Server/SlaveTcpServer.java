@@ -169,7 +169,7 @@ public class SlaveTcpServer {
         switch (cmd) {
             case "set":
                 res=commandHandler.set(commandArray);
-                CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
+                //CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
                 break;
         }
         return res;
