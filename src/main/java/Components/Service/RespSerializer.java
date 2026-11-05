@@ -104,8 +104,8 @@ public class RespSerializer {
         String len=parts[0];
         int length=Integer.parseInt(len);
         String command[]= new String[length];
-        int idx=0;
-        command[idx]=parts[2];
+        command[0]=parts[2];
+        int idx=1;
         for(int i=4;i<parts.length;i+=2){
             command[idx++]=parts[i];
         }
