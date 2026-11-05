@@ -8,10 +8,34 @@ import java.util.Set;
 public class ConnectionPool {
     private  Set<Client> clients;
     private Set<Slave> slaves;
+    public int slavesThatareUp=0;
+    public int bytesSentToSlaves=0;
+
+    public int getBytesSentToSlaves() {
+        return bytesSentToSlaves;
+    }
+
+    public void setBytesSentToSlaves(int bytesSentToSlaves) {
+        this.bytesSentToSlaves = bytesSentToSlaves;
+    }
+
+    public int getSlavesThatareUp() {
+        return slavesThatareUp;
+    }
+
+    public void setSlavesThatareUp(int slavesThatareUp) {
+        this.slavesThatareUp = slavesThatareUp;
+    }
 
     public ConnectionPool(Set<Client> clients, Set<Slave> slaves) {
         this.clients = clients;
         this.slaves = slaves;
+    }
+
+    public void slaveAck(int ackResponse){
+        if(this.bytesSentToSlaves==ackResponse){
+            slavesThatareUp++;
+        }
     }
 
     public Set<Client> getClients() {

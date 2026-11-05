@@ -159,7 +159,8 @@ public class SlaveTcpServer {
                 String commandResult = handleCommandFromMaster(commandArray,masterClient);
 
                 if(commandArray.length>=2 && commandArray[0].equalsIgnoreCase("replconf") && commandArray[1].equalsIgnoreCase("getack")){
-                    outputStream.write(commandResult.getBytes());
+                    if(!commandResult.equals("") && commandResult!=null)
+                       outputStream.write(commandResult.getBytes());
                     offset++;
                     List<Byte> leftOverBytes=new ArrayList<>();
                     while (true){

@@ -111,4 +111,13 @@ public class RespSerializer {
         }
         return command;
     }
+
+
+    public String respInteger(int i){
+        StringBuilder sb=new StringBuilder();
+        sb.append(":");
+        sb.append(i);
+        sb.append("\r\n");
+        return sb.toString();
+    }
 }
