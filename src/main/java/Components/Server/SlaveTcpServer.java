@@ -137,7 +137,7 @@ public class SlaveTcpServer {
                     }
                     offset++;
                     commandBytes.add((byte) byteRead);
-                    if(inputStream.available()<0){
+                    if(inputStream.available()<=0){
                         break;
                     }
                 }
