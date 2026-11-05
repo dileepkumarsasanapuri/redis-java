@@ -106,7 +106,7 @@ public class RespSerializer {
         String command[]= new String[length];
         int idx=0;
         command[idx]=parts[2];
-        for(int i=4;i<length;i+=2){
+        for(int i=4;i<parts.length;i+=2){
             command[idx++]=parts[i];
         }
         return command;

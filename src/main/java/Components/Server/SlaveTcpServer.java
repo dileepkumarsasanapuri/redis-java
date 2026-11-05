@@ -148,7 +148,7 @@ public class SlaveTcpServer {
                 if(commandBytes.isEmpty())
                     continue;
                 String commandString = commandBuilder.toString();
-                String parts[]=commandString.split("\r\n");
+                String []parts=commandString.split("\r\n");
                 if(commandString.equals("+OK\r\n")){
                     log.info("Received +OK from master");
                     continue;
