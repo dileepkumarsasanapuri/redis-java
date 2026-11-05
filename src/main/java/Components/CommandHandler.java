@@ -27,7 +27,7 @@ public class CommandHandler {
         } catch (Exception e) {
             return "$-1\r\n";
         }
-        return store.set(key,val,5);
+        return store.set(key,val,50000);
     }
     public String get(String []command){
         try {
