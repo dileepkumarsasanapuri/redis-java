@@ -19,6 +19,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -111,6 +112,11 @@ public class MasterTcpServer {
                 break;
             case "set":
                 res=commandHandler.set(command);
+                try {
+                    CompletableFuture.runAsync(() -> propagateToSlaves(command));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 break;
             case "get":
                 res=commandHandler.get(command);
@@ -133,5 +139,16 @@ public class MasterTcpServer {
 
         client.send(res,data);
 
+    }
+
+    private void propagateToSlaves(String[] command) {
+        String commandRespStr= respSerializer.respArray(command);
+          try{
+                for(Slave slave:connectionPool.getSlaves()){
+                    slave.send(commandRespStr.getBytes());
+                }
+        } catch (Exception e) {
+              log.error( "Error propagating command to slaves: " + e.getMessage());
+          }
     }
 }

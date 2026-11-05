@@ -13,4 +13,10 @@ public class Slave {
         this.connection=client;
         this.capabilities=new ArrayList<>();
     }
+
+    public void send(byte [] cmd){
+        if(cmd!=null){
+            this.connection.outputStream.write(cmd);
+        }
+    }
 }
