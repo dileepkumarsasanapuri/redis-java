@@ -1,9 +1,10 @@
 package Components.Server;
 
+import Components.Infra.ConnectionPool;
 import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
 import Config.RedisConfig;
-import Infra.Client;
+import Components.Infra.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,11 +28,13 @@ public class MasterTcpServer {
     private RespSerializer respSerializer;
     @Autowired
     private CommandHandler commandHandler;
+    @Autowired
+    private RedisConfig redisConfig;
+    @Autowired
+    private ConnectionPool connectionPool;
 
     private static final Logger log = LoggerFactory.getLogger(MasterTcpServer.class);
 
-    @Autowired
-    private RedisConfig redisConfig;
 
     public void startServer(){
 
@@ -73,11 +76,13 @@ public class MasterTcpServer {
     }
 
     public void handleClients(Client client) throws IOException {
+        connectionPool.addClient(client);
         while(client.socket.isConnected()){
             byte [] buffer=new byte[client.socket.getReceiveBufferSize()];
             int bytesRead=client.inputStream.read(buffer);
             if(bytesRead==-1){
                 log.info("Client disconnected: "+client.id);
+                connectionPool.removeClient(client);
                 break;
             }
             if(bytesRead > 0){
@@ -87,8 +92,9 @@ public class MasterTcpServer {
                     handleCommand(command,client);
                 }
             }
-
         }
+        connectionPool.removeClient(client);
+        connectionPool.removeSlave(client);
     }
 
     private void handleCommand(String[] command, Client client) throws IOException {
@@ -108,6 +114,9 @@ public class MasterTcpServer {
                 break;
             case "info":
                 res=commandHandler.info(command);
+                break;
+            case "replconf":
+                res=commandHandler.replconf(command,client);
                 break;
         }
         if(res !=null && !res.equals(""))

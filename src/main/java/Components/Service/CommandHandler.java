@@ -1,8 +1,10 @@
 package Components.Service;
 
+import Components.Infra.Client;
+import Components.Infra.ConnectionPool;
+import Components.Infra.Slave;
 import Components.Repository.Store;
 import Config.RedisConfig;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,9 @@ public class CommandHandler {
 
     @Autowired
     public RedisConfig redisConfig;
+
+    @Autowired
+    public ConnectionPool connectionPool;
 
     public String ping(String []command){
         return "+PONG\r\n";
@@ -73,5 +78,34 @@ public class CommandHandler {
             return respSerializer.serialize(replicationInfo);
         }
         return "";
+    }
+
+    public String replconf(String[] command, Client client) {
+        switch (command[1].toLowerCase()){
+            case "listening-port":
+                connectionPool.removeClient(client);
+                Slave sl=new Slave(client);
+                connectionPool.addSlave(sl);
+                return "+OK\r\n";
+            case "capa":
+                Slave slave=null;
+                for(Slave s:connectionPool.getSlaves()){
+                    if(s.connection.equals(client)){
+                        slave=s;
+                        break;
+                    }
+                }
+                for(int i=0;i<command.length;i++){
+                    if(command[i].equalsIgnoreCase("capa")){
+                        slave.capabilities.add(command[i+1]);
+                    }
+                }
+                return "+OK\r\n";
+
+//            case "ack":
+//                client.ack=Long.parseLong(command[2]);
+//                break;
+        }
+        return "+OK\r\n";
     }
 }
