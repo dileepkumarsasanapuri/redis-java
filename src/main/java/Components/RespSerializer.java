@@ -53,7 +53,7 @@ public class RespSerializer {
                 String arrLen="";
                 i++;
                 while(i<dataArr.length && Character.isDigit(dataArr[i])){
-                    arrLen+=dataArr[i];
+                    arrLen+=dataArr[i++];
                 }
                 i+=2;
                 if(dataArr[i]=='*'){
