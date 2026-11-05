@@ -65,7 +65,12 @@ public class CommandHandler {
         int replication = Arrays.stream(command)
                 .anyMatch(s -> s.equalsIgnoreCase("replication")) ? 1 : 0;
         if(replication == 1){
-            return respSerializer.serialize("role:"+redisConfig.getRole());
+            String role= "role:"+ redisConfig.getRole();
+            String masterReplID= "master_replid:"+ redisConfig.getMasterReplId();
+            String masterReplOffset= "master_repl_offset:"+ redisConfig.getMasterReplOffset();
+            String [] info= new String[]{role,masterReplID,masterReplOffset};
+            String replicationInfo= String.join("\r\n",info);
+            return respSerializer.serialize(replicationInfo);
         }
         return "";
     }
