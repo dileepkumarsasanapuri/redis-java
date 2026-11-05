@@ -10,6 +10,13 @@ import java.util.List;
 @Component
 public class RespSerializer {
 
+    public String serialize(String command){
+        StringBuilder sb=new StringBuilder();
+        sb.append("$"+command.length()+"\r\n");
+        sb.append(command+"\r\n");
+        return sb.toString();
+    }
+
     public int getParts(char []dataArr, int i, String []subArray){
         int j=0;
         while(i<dataArr.length && j<subArray.length){

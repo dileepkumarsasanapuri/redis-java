@@ -18,6 +18,8 @@ public class TcpServer {
 
     @Autowired
     private RespSerializer respSerializer;
+    @Autowired
+    private CommandHandler commandHandler;
 
     public void startServer(){
 
@@ -62,15 +64,37 @@ public class TcpServer {
             byte [] buffer=new byte[client.socket.getReceiveBufferSize()];
             int bytesRead=client.inputStream.read(buffer);
             if(bytesRead > 0){
-                List<String [] > res= respSerializer.deseriaize(buffer);
-                for( String [] s:res){
-                    System.out.println();
-                    for(String ss:s){
-                        System.out.println(ss + " ");
-                    }
+                List<String [] > commands= respSerializer.deseriaize(buffer);
+                for( String [] command:commands){
+                    handleCommand(command,client);
                 }
             }
 
+        }
+    }
+
+    private void handleCommand(String[] command, Client client) {
+        String res;
+        switch (command[0].toLowerCase()){
+            case "ping":
+                res=commandHandler.ping(command);
+                break;
+            case "echo":
+                res=commandHandler.echo(command);
+                break;
+            case "set":
+                res=commandHandler.set(command);
+                break;
+            case "get":
+                res=commandHandler.get(command);
+                break;
+            default:
+                res="";
+        }
+        try {
+            client.outputStream.write(res.getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
