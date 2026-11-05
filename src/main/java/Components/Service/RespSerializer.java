@@ -109,6 +109,6 @@ public class RespSerializer {
         for(int i=2;i<length;i+=2){
             command[idx++]=parts[i];
         }
-
+        return command;
     }
 }

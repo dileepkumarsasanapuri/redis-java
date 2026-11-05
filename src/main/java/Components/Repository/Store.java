@@ -58,7 +58,7 @@ public class Store {
         try{
             Value value = map.get(key);
             LocalDateTime now=LocalDateTime.now();
-            if(value.expiresAt.isBefore(now)){
+            if(value !=null && value.expiresAt.isBefore(now)){
                 map.remove(key);
                 return "$-1\r\n";
             }
