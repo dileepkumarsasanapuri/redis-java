@@ -1,6 +1,6 @@
 //package Components.Service;
 //
-//import Components.Server.TcpServer;
+//import Components.Server.MasterTcpServer;
 //import Config.AppConfig;
 //import Config.RedisConfig;
 //import lombok.extern.slf4j.Slf4j;
@@ -27,7 +27,7 @@
 //        RedisConfig redisConfig=context.getBean(RedisConfig.class);
 //        redisConfig.setRole("master");
 //        redisConfig.setPort(6379);
-//        TcpServer app=context.getBean(TcpServer.class);
+//        MasterTcpServer app=context.getBean(MasterTcpServer.class);
 //
 //        CompletableFuture.runAsync(() -> app.startServer(6379));
 //
