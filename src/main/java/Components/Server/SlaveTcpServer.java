@@ -116,6 +116,15 @@ public class SlaveTcpServer {
             resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
             log("Received response from master: " + resp);
 
+            // HANDSHAKE - part - 3: sending PSYNC command to the master
+            String psyncCommand = "*3\r\n$5\r\nPSYNC\r\n$" + String.valueOf("?".length()) + "\r\n?\r\n$" + String.valueOf("-1".length()) + "\r\n-1\r\n";
+            data = psyncCommand.getBytes();
+            outputStream.write(data);
+            bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
+            resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
+            log("Received response from master: " + resp);
+
+
 
 
         } catch (IOException e) {
