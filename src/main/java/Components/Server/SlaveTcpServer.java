@@ -86,8 +86,8 @@ public class SlaveTcpServer {
         try(Socket master= new Socket(redisConfig.getMasterHost(), redisConfig.getMasterPort())) {
             InputStream inputStream = master.getInputStream();
             OutputStream outputStream = master.getOutputStream();
-             byte[] inputBuffer = new byte[1024];
-            byte [] data=respSerializer.serialize("PING").getBytes();
+            byte[] inputBuffer = new byte[1024];
+            byte [] data="*1\r\n$4\r\nPING\r\n".getBytes();
             outputStream.write(data);
 
             int bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
