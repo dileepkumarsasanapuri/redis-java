@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Cleaner;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -154,7 +155,29 @@ public class SlaveTcpServer {
                     continue;
                 }
                 String []commandArray=respSerializer.parseArray(parts);
-                String commandResult = handleCommandFromMaster(commandArray,master);
+                Client masterClient= new Client(master,master.getInputStream(),master.getOutputStream(),-1);
+                String commandResult = handleCommandFromMaster(commandArray,masterClient);
+
+                if(commandArray.length>=2 && commandArray[0].equalsIgnoreCase("replconf") && commandArray[1].equalsIgnoreCase("getack")){
+                    outputStream.write(commandResult.getBytes());
+                    offset++;
+                    List<Byte> leftOverBytes=new ArrayList<>();
+                    while (true){
+                        if(inputStream.available()<=0){
+                            break;
+                        }
+                        byte b=(byte)inputStream.read();
+                        leftOverBytes.add(b);
+                        if((int)b==(int)'*')
+                            break;
+                        offset++;
+                    }
+                    StringBuilder leftOverStr=new StringBuilder();
+                    for(Byte b:leftOverBytes){
+                        leftOverStr.append((char)(b.byteValue() & 0xFF));
+                    }
+                }
+                redisConfig.setMasterReplOffset((long)offset+redisConfig.getMasterReplOffset());
             }
 
 
@@ -163,7 +186,7 @@ public class SlaveTcpServer {
         }
     }
 
-    private String handleCommandFromMaster(String[] commandArray, Socket master) {
+    private String handleCommandFromMaster(String[] commandArray, Client master) {
         String cmd=commandArray[0].toLowerCase();
         String res="";
         switch (cmd) {
@@ -171,6 +194,9 @@ public class SlaveTcpServer {
                 commandHandler.set(commandArray);
                 CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
                 break;
+
+            case "replconf":
+                res=commandHandler.replconf(commandArray,master);
         }
         return res;
     }

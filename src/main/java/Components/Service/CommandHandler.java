@@ -84,6 +84,9 @@ public class CommandHandler {
 
     public String replconf(String[] command, Client client) {
         switch (command[1].toLowerCase()){
+            case "getack":
+                String []replconfAck= new String[]{"REPLCONF","ACK",redisConfig.getMasterReplOffset()+""};
+                return respSerializer.respArray(replconfAck);
             case "listening-port":
                 connectionPool.removeClient(client);
                 Slave sl=new Slave(client);
