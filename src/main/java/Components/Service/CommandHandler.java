@@ -119,7 +119,7 @@ public class CommandHandler {
     }
     public ResponseDto psync(String[] command, Client client) {
         if(command[1].equalsIgnoreCase("?") && command[2].equalsIgnoreCase("-1")){
-            String res= "+FULLRESYNC "+redisConfig.getMasterReplId()+" "+redisConfig.getMasterReplOffset()+"\r\n";
+            String res= "FULLRESYNC "+redisConfig.getMasterReplId()+" "+redisConfig.getMasterReplOffset()+"\r\n";
 
             byte [] rdbFile= Base64.getDecoder().decode(emptyRDBFile);
             String  len=rdbFile.length+"";
