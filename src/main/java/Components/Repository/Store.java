@@ -1,5 +1,7 @@
-package Components;
+package Components.Repository;
 
+import Components.Service.RespSerializer;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -8,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Component
 public class Store {
     public ConcurrentHashMap<String , Value> map;
@@ -30,6 +33,7 @@ public class Store {
             map.put(key, value);
             return "+OK\r\n";
         } catch (Exception e) {
+            log.error(e.getMessage());
             return "$-1\r\n";
         }
     }
@@ -42,6 +46,7 @@ public class Store {
             map.put(key, value);
             return "+OK\r\n";
         } catch (Exception e) {
+            log.error(e.getMessage());
             return "$-1\r\n";
         }
     }
@@ -56,7 +61,7 @@ public class Store {
             }
             return respSerializer.serialize(value.val);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error(e.getMessage());
             return "$-1\r\n";
         }
     }

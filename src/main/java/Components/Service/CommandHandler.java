@@ -1,11 +1,14 @@
-package Components;
+package Components.Service;
 
+import Components.Repository.Store;
+import Config.RedisConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
+@Slf4j
 @Component
 public class CommandHandler {
 
@@ -14,6 +17,9 @@ public class CommandHandler {
 
     @Autowired
     private Store store;
+
+    @Autowired
+    public RedisConfig redisConfig;
 
     public String ping(String []command){
         return "+PONG\r\n";
@@ -39,6 +45,7 @@ public class CommandHandler {
                 return store.set(key,val);
             }
         } catch (Exception e) {
+            log.error(e.getMessage());
             return "$-1\r\n";
         }
     }
@@ -46,7 +53,17 @@ public class CommandHandler {
         try {
             return store.get(command[1]);
         } catch (Exception e) {
+            log.error(e.getMessage());
             return "$-1\r\n";
         }
+    }
+
+    public String info(String[] command) {
+        int replication = Arrays.stream(command)
+                .anyMatch(s -> s.equalsIgnoreCase("replication")) ? 1 : 0;
+        if(replication == 1){
+            return respSerializer.serialize("role:"+redisConfig.getRole());
+        }
+        return "";
     }
 }

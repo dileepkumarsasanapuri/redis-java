@@ -1,12 +1,13 @@
-package Components;
+package Components.Service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class RespSerializer {
 
@@ -79,7 +80,7 @@ public class RespSerializer {
             }
             return res;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error(e.getMessage());
         }
         return  new ArrayList<>();
     }
