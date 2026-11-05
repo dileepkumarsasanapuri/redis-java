@@ -123,7 +123,7 @@ public class CommandHandler {
 
             byte [] rdbFile= Base64.getDecoder().decode(emptyRDBFile);
             String  len=rdbFile.length+"";
-            String  fullResHeader= res+"$"+len+"\r\n";
+            String  fullResHeader= "$"+len+"\r\n";
             byte [] header= fullResHeader.getBytes();
 
             return new ResponseDto(res,concatenate(header,rdbFile));
