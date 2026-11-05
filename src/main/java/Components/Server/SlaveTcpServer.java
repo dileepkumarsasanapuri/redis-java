@@ -1,6 +1,7 @@
 package Components.Server;
 
 import Components.Infra.ConnectionPool;
+import Components.Infra.Slave;
 import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
 import Components.Service.ResponseDto;
@@ -17,6 +18,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -122,15 +124,81 @@ public class SlaveTcpServer {
             String psyncCommand = "*3\r\n$5\r\nPSYNC\r\n$" + String.valueOf("?".length()) + "\r\n?\r\n$" + String.valueOf("-1".length()) + "\r\n-1\r\n";
             data = psyncCommand.getBytes();
             outputStream.write(data);
-            bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
-            resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
-            log("Received response from master: " + resp);
 
-           // handlePsyncResponse(resp, inputStream, outputStream);
+            List<Integer> res=handlePsyncResponse( inputStream);
+            while(master.isConnected()){
+                int offset=1;
+                StringBuilder commandBuilder = new StringBuilder();
+                List<Byte> commandBytes = new ArrayList<>();
+                while (true) {
+                    int byteRead = inputStream.read();
+                    if (byteRead == '*') {
+                        break; // End of stream
+                    }
+                    offset++;
+                    commandBytes.add((byte) byteRead);
+                    if(inputStream.available()<0){
+                        break;
+                    }
+                }
+
+                for(Byte b:commandBytes){
+                    commandBuilder.append((char)(b.byteValue() & 0xFF));
+                }
+                if(commandBytes.isEmpty())
+                    continue;
+                String commandString = commandBuilder.toString();
+                String parts[]=commandString.split("\r\n");
+                if(commandString.equals("+OK\r\n")){
+                    log.info("Received +OK from master");
+                    continue;
+                }
+                String []commandArray=respSerializer.parseArray(parts);
+                String commandResult = handleCommandFromMaster(commandArray,master);
+            }
+
 
         } catch (IOException e) {
             log.error("Error establishing connection to master: " + e.getMessage());
         }
+    }
+
+    private String handleCommandFromMaster(String[] commandArray, Socket master) {
+        String cmd=commandArray[0].toLowerCase();
+        String res="";
+        switch (cmd) {
+            case "set":
+                res=commandHandler.set(commandArray);
+                CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
+                break;
+        }
+        return res;
+    }
+
+    private void propagateToSlaves(String[] command) {
+        String commandRespStr= respSerializer.respArray(command);
+        try{
+            for(Slave slave:connectionPool.getSlaves()){
+                slave.send(commandRespStr.getBytes());
+            }
+        } catch (Exception e) {
+            log.error( "Error propagating command to slaves: " + e.getMessage());
+        }
+    }
+
+    private List<Integer> handlePsyncResponse(InputStream inputStream) throws IOException {
+        List<Integer> res= new ArrayList<>();
+        while (true){
+            if(inputStream.available() <=0)
+                continue;
+            int b=inputStream.read();
+            res.add(b);
+            if(b==(int)'*'){
+                break;
+            }
+        }
+
+        return res;
     }
 
 
