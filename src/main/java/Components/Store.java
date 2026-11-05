@@ -3,6 +3,7 @@ package Components;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,10 +22,21 @@ public class Store {
     public Set<String> getKeys() {
         return map.keySet();
     }
+    public String set(String key,String val){
+        LocalDateTime createdAt=LocalDateTime.now();
+        LocalDateTime expiresAt=LocalDateTime.MAX;
+        Value value=new Value(val,createdAt,expiresAt);
+        try {
+            map.put(key, value);
+            return "+OK\r\n";
+        } catch (Exception e) {
+            return "$-1\r\n";
+        }
+    }
 
     public String set(String key,String val, int ttl){
         LocalDateTime createdAt=LocalDateTime.now();
-        LocalDateTime expiresAt=LocalDateTime.MAX;
+        LocalDateTime expiresAt=createdAt.plus(Duration.ofMillis(ttl));
         Value value=new Value(val,createdAt,expiresAt);
         try {
             map.put(key, value);
@@ -37,6 +49,11 @@ public class Store {
     public String get(String key){
         try{
             Value value = map.get(key);
+            LocalDateTime now=LocalDateTime.now();
+            if(value.expiresAt.isBefore(now)){
+                map.remove(key);
+                return "$-1\r\n";
+            }
             return respSerializer.serialize(value.val);
         } catch (Exception e) {
             System.out.println(e.getMessage());
