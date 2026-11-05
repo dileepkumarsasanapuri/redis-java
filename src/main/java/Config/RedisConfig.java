@@ -49,26 +49,26 @@ public class RedisConfig {
     }
 
     public String getMasterReplId() {
-
-        return masterReplId;
-    }
-
-    public void setMasterReplId(String masterReplId) {
         if(masterReplId==null){
             masterReplId = UUID.randomUUID().toString().replace("-", "")
                     + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         }
+        return masterReplId;
+    }
+
+    public void setMasterReplId(String masterReplId) {
         this.masterReplId = masterReplId;
     }
 
     public Long getMasterReplOffset() {
+        if(masterReplOffset==null){
+            masterReplOffset = 0L;
+        }
         return masterReplOffset;
     }
 
     public void setMasterReplOffset(Long masterReplOffset) {
-        if(masterReplOffset==null){
-            masterReplOffset = 0L;
-        }
+
         this.masterReplOffset = masterReplOffset;
     }
 }
