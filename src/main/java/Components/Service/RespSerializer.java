@@ -103,10 +103,10 @@ public class RespSerializer {
     public String[] parseArray(String[] parts) {
         String len=parts[0];
         int length=Integer.parseInt(len);
-
         String command[]= new String[length];
         int idx=0;
-        for(int i=2;i<length;i+=2){
+        command[idx]=parts[2];
+        for(int i=4;i<length;i+=2){
             command[idx++]=parts[i];
         }
         return command;
