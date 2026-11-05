@@ -86,13 +86,38 @@ public class SlaveTcpServer {
         try(Socket master= new Socket(redisConfig.getMasterHost(), redisConfig.getMasterPort())) {
             InputStream inputStream = master.getInputStream();
             OutputStream outputStream = master.getOutputStream();
+            // HANDSHAKE - part - 1: send the slave's port to the master
             byte[] inputBuffer = new byte[1024];
             byte [] data="*1\r\n$4\r\nPING\r\n".getBytes();
             outputStream.write(data);
-
             int bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
             String  resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
             log("Received response from master: " + resp);
+
+            // HANDSHAKE - part - 2: send the slave's port to the master
+            String replconf= "*3\r\n$8\r\nREPLCONF\r\n$4\r\nlistening-port\r\n$"
+                    +String.valueOf(redisConfig.getPort()).length()+"\r\n"
+                    +redisConfig.getPort()+"\r\n";
+
+            data = replconf.getBytes();
+            outputStream.write(data);
+            bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
+            resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
+            log("Received response from master: " + resp);
+
+            // HANDSHAKE - part - 2(b) : send the slave's protocol info to the master
+
+            replconf= "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$"
+                    +String.valueOf("psync2".length())+"\r\n"
+                    +"psync2"+"\r\n";
+            data = replconf.getBytes();
+            outputStream.write(data);
+            bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
+            resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
+            log("Received response from master: " + resp);
+
+
+
         } catch (IOException e) {
             log.error("Error establishing connection to master: " + e.getMessage());
         }
