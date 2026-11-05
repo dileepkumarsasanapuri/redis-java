@@ -124,8 +124,7 @@ public class SlaveTcpServer {
             resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
             log("Received response from master: " + resp);
 
-
-
+           // handlePsyncResponse(resp, inputStream, outputStream);
 
         } catch (IOException e) {
             log.error("Error establishing connection to master: " + e.getMessage());
