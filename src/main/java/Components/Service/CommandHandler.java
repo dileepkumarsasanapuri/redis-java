@@ -1,6 +1,7 @@
 package Components.Service;
 
 import Components.Infra.Client;
+import Components.Infra.ClientChannelPool;
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
 import Components.Repository.OptimisticLockException;
@@ -39,6 +40,9 @@ public class CommandHandler {
 
     @Autowired
     public ConnectionPool connectionPool;
+
+    @Autowired
+    public ClientChannelPool clientChannelPool;
 
     public String ping(String []command){
         return "+PONG\r\n";
@@ -342,5 +346,36 @@ public class CommandHandler {
             store.addWatcherForKey(command[i],client);
         }
         return "+OK\r\n";
+    }
+
+    public String subscribe(String []command,Client client){
+        String channelId= command[1];
+        int numberOfChannels= clientChannelPool.subscribe(client,channelId);
+        String numberOfChannelsResp=respSerializer.respInteger(numberOfChannels);
+        String response = "*3\r\n$9\r\nsubscribe\r\n"
+                + respSerializer.serialize(channelId)
+                + numberOfChannelsResp;
+
+        client.isSubscribed=true;
+        return response;
+    }
+
+    public String unsubscribe(String []command,Client client){
+        String channelId= command[1];
+        int numberOfChannels= clientChannelPool.unsubscribe(client,channelId);
+        String numberOfChannelsResp=respSerializer.respInteger(numberOfChannels);
+        String response = "*3\r\n$11\r\nunsubscribe\r\n"
+                + respSerializer.serialize(channelId)
+                + numberOfChannelsResp;
+
+        client.isSubscribed=false;
+        return response;
+    }
+
+    public String publish(String [] command){
+        String channelId=command[1];
+        String msg=command[2];
+        int res= clientChannelPool.publish(channelId,msg);
+        return respSerializer.respInteger(res);
     }
 }

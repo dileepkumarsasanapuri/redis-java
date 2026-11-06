@@ -247,7 +247,11 @@ public class SlaveTcpServer {
                 byte [] recieved= Arrays.copyOf(buffer,bytesRead);
                 List<String [] > commands= respSerializer.deseriaize(recieved);
                 for( String [] command:commands){
-                    handleCommand(command,client);
+                    if(client.isSubscribed){
+                        handleCommandSubscribed(command,client);
+                    }else {
+                        handleCommand(command, client);
+                    }
                 }
             }
 
@@ -256,6 +260,37 @@ public class SlaveTcpServer {
         connectionPool.removeClient(client);
     }
 
+
+    private void handleCommandSubscribed(String[] command, Client client) throws IOException {
+        if(!isCommandSubscribeModelEligible(command[0])){
+            String errMsg="-ERR Can't execute '"+command[0].toLowerCase()+"':only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n";
+            client.send(errMsg);
+            return;
+        }
+        String res="";
+        switch (command[0].toLowerCase()){
+            case "subscribe":
+                res=commandHandler.subscribe(command,client);
+                break;
+            case "unsubscribe":
+                res=commandHandler.unsubscribe(command,client);
+                break;
+            case "ping":
+                res="*2\r\n$4\r\npong\r\n$0\r\n\r\n";
+                break;
+            default:
+                res=command[0];
+                break;
+        }
+        client.send(res);
+    }
+
+    private boolean isCommandSubscribeModelEligible(String command){
+        return switch (command.toLowerCase()){
+            case "subscribe","unsubscribe","psubscribe","punsubscribe","ping","quit" -> true;
+            default -> false;
+        };
+    }
     private void handleCommand(String[] command, Client client) throws IOException {
         String res="";
         byte [] data=null;
@@ -288,6 +323,12 @@ public class SlaveTcpServer {
                 Instant now=Instant.now();
                 res= commandHandler.wait(command, now);
                 connectionPool.slavesThatareUp=0;
+                break;
+            case "subscribe":
+                res=commandHandler.subscribe(command,client);
+                break;
+            case "unsubscribe":
+                res=commandHandler.unsubscribe(command,client);
                 break;
 
         }

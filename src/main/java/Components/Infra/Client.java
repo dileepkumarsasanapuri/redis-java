@@ -13,11 +13,20 @@ public class Client {
     public InputStream inputStream;
     public OutputStream outputStream;
     public int id;
+    public boolean isSubscribed;
 
     private boolean transactionalContext;
     public Queue<String []> commandQueue;
     public List<String> transactionResponse; // strings already in rest format
     public Set<String> watchSet;
+
+    public Client(Socket socket, InputStream inputStream, OutputStream outputStream, int id) {
+        this.socket = socket;
+        this.inputStream = inputStream;
+        this.outputStream = outputStream;
+        this.id = id;
+        this.isSubscribed=false;
+    }
 
     public boolean isWatchSetInitiated(){
         return this.watchSet!=null;
@@ -51,12 +60,6 @@ public class Client {
         return transactionalContext;
     }
 
-    public Client(Socket socket, InputStream inputStream, OutputStream outputStream, int id) {
-        this.socket = socket;
-        this.inputStream = inputStream;
-        this.outputStream = outputStream;
-        this.id = id;
-    }
 
 //    public void send(String res, byte[] data) throws IOException {
 //        if(res !=null && !res.equals(""))
