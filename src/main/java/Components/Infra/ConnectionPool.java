@@ -11,21 +11,6 @@ public class ConnectionPool {
     public int slavesThatareUp=0;
     public int bytesSentToSlaves=0;
 
-    public int getBytesSentToSlaves() {
-        return bytesSentToSlaves;
-    }
-
-    public void setBytesSentToSlaves(int bytesSentToSlaves) {
-        this.bytesSentToSlaves = bytesSentToSlaves;
-    }
-
-    public int getSlavesThatareUp() {
-        return slavesThatareUp;
-    }
-
-    public void setSlavesThatareUp(int slavesThatareUp) {
-        this.slavesThatareUp = slavesThatareUp;
-    }
 
     public ConnectionPool(Set<Client> clients, Set<Slave> slaves) {
         this.clients = clients;

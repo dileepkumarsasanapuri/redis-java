@@ -94,7 +94,7 @@ public class CommandHandler {
             case "ack":
                 int ackResponse=Integer.parseInt(command[2]);
                 connectionPool.slaveAck(ackResponse);
-                break;
+                return "";
 
             case "listening-port":
                 connectionPool.removeClient(client);
@@ -115,10 +115,6 @@ public class CommandHandler {
                     }
                 }
                 return "+OK\r\n";
-
-//            case "ack":
-//                client.ack=Long.parseLong(command[2]);
-//                break;
         }
         return "+OK\r\n";
     }
@@ -166,10 +162,10 @@ public class CommandHandler {
         }
         int res=0;
         while(true){
-            if(Duration.between(now,Instant.now()).toMillis()>=time){
+            if(res>=required){
                 break;
             }
-            if(res>=required){
+            if(Duration.between(now,Instant.now()).toMillis()>=time){
                 break;
             }
             res=connectionPool.slavesThatareUp;

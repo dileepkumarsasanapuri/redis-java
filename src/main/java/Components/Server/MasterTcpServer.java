@@ -141,7 +141,8 @@ public class MasterTcpServer {
                 break;
             case "wait":
                if(connectionPool.bytesSentToSlaves==0){
-                   res= respSerializer.respInteger(connectionPool.getSlavesThatareUp());
+                   res= respSerializer.respInteger(connectionPool.slavesThatareUp);
+                   break;
                }
                 Instant now=Instant.now();
                 res= commandHandler.wait(command, now);
