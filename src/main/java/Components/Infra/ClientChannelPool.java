@@ -55,7 +55,10 @@ public class ClientChannelPool {
             channelIdByClientIds.get(client.id).remove(channelId);
             channel.clients.remove(client);
 
-            return channelIdByClientIds.get(client.id).size();
+            if(channel.clients.isEmpty()){
+                channelByChannelId.remove(channelId);
+            }
+            return channelIdByClientIds.getOrDefault(client.id, new HashSet<>()).size();
 
         }finally {
             rwLock.writeLock().unlock();
