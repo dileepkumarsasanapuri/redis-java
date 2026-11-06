@@ -22,6 +22,13 @@ public class Value {
         this.type= ValueType.STRING;
     }
 
+    public Value(ValueType type, LocalDateTime createdAt, LocalDateTime expiresAt) {
+        this.createdAt=createdAt;
+        this.val=null;
+        this.expiresAt=expiresAt;
+        this.type=type;
+        this.list=new LinkedBlockingDeque<String>();
+    }
     @Override
     public String toString(){
         return val;
