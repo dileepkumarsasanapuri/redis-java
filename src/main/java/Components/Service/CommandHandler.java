@@ -10,8 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
 
 
 @Component
@@ -87,10 +91,11 @@ public class CommandHandler {
             case "getack":
                 String []replconfAck= new String[]{"REPLCONF","ACK",redisConfig.getMasterReplOffset()+""};
                 return respSerializer.respArray(replconfAck);
-//            case "ack":
-//                int ackResponse=Integer.parseInt(command[2]);
-//                connectionPool.slaveAck(ackResponse);
-//
+            case "ack":
+                int ackResponse=Integer.parseInt(command[2]);
+                connectionPool.slaveAck(ackResponse);
+                break;
+
             case "listening-port":
                 connectionPool.removeClient(client);
                 Slave sl=new Slave(client);
@@ -133,10 +138,46 @@ public class CommandHandler {
             String  fullResHeader= "$"+len+"\r\n";
             byte [] header= fullResHeader.getBytes();
 
+            connectionPool.slavesThatareUp++;
             return new ResponseDto(res,concatenate(header,rdbFile));
         }
         else{
             return new ResponseDto("+CONTINUE\r\n",null);
         }
+    }
+
+    public String wait(String[] command, Instant now) {
+        String [] getAcArr=new String[]{"REPLCONF","GETACK","*"};
+        String getAck=respSerializer.respArray(getAcArr);
+        byte []getAckBytes=getAck.getBytes();
+        int bufferSize= getAckBytes.length;
+
+        int required=Integer.parseInt(command[1]);
+        int time = Integer.parseInt(command[2]);
+
+        for (Slave sl:connectionPool.getSlaves()){
+            CompletableFuture.runAsync(()->{
+                try {
+                    sl.connection.send(getAckBytes);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+        int res=0;
+        while(true){
+            if(Duration.between(now,Instant.now()).toMillis()>=time){
+                break;
+            }
+            if(res>=required){
+                break;
+            }
+            res=connectionPool.slavesThatareUp;
+        }
+        connectionPool.bytesSentToSlaves+=bufferSize;
+        if(res> required){
+            return respSerializer.respInteger(required);
+        }
+        return respSerializer.respInteger(res);
     }
 }

@@ -19,6 +19,7 @@ import java.lang.ref.Cleaner;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -275,6 +276,14 @@ public class SlaveTcpServer {
                 ResponseDto resDto=commandHandler.psync(command);
                 res=resDto.response;
                 data= resDto.data;
+                break;
+            case "wait":
+                if(connectionPool.bytesSentToSlaves==0){
+                    res= respSerializer.respInteger(connectionPool.getSlavesThatareUp());
+                }
+                Instant now=Instant.now();
+                res= commandHandler.wait(command, now);
+                connectionPool.slavesThatareUp=0;
                 break;
 
         }
