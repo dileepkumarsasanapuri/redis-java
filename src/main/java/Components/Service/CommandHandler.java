@@ -194,7 +194,7 @@ public class CommandHandler {
 
             res=respSerializer.respInteger(val);
         }catch (Exception e){
-            res= "-ERR value is not a integer or out of range \r\n";
+            res= "-ERR value is not an integer or out of range\r\n";
         }
         return res;
     }
