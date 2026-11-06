@@ -186,9 +186,6 @@ public class MasterTcpServer {
                 break;
             case "get":
                 res=commandHandler.get(command);
-                for(Slave s:connectionPool.getSlaves()){
-
-                }
                 break;
             case "info":
                 res=commandHandler.info(command);
