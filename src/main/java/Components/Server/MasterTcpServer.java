@@ -148,6 +148,8 @@ public class MasterTcpServer {
                 res= commandHandler.wait(command, now);
                 connectionPool.slavesThatareUp=0;
                 break;
+            case "incr":
+                commandHandler.incr(command);
         }
 
         client.send(res,data);

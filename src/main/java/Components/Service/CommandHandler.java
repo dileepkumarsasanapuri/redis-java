@@ -4,6 +4,7 @@ import Components.Infra.Client;
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
 import Components.Repository.Store;
+import Components.Repository.Value;
 import Config.RedisConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,5 +176,26 @@ public class CommandHandler {
             return respSerializer.respInteger(required);
         }
         return respSerializer.respInteger(res);
+    }
+
+    public String incr(String[] command) {
+        String key=command[1];
+        String res="";
+        try{
+            Value value=store.getValue(key);
+            if(value==null){
+                store.set(key,"0");
+                value = store.getValue(key);
+            }
+
+            int val= Integer.parseInt(value.val);
+            val++;
+            value.val=val+"";
+
+            res=respSerializer.respInteger(val);
+        }catch (Exception e){
+            res= "-ERR value is not a integer or out of range \r\n";
+        }
+        return res;
     }
 }
