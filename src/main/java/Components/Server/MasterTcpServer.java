@@ -121,7 +121,7 @@ public class MasterTcpServer {
         switch (command[0].toLowerCase()){
             case "exec":
                 if(client.commandQueue==null || client.commandQueue.isEmpty()){
-                    client.send("+OK\r\n");
+                    client.send("*0\r\n");
                     client.endTransaction();
                     return;
                 }
