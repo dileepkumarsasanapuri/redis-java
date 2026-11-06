@@ -149,7 +149,8 @@ public class MasterTcpServer {
                 connectionPool.slavesThatareUp=0;
                 break;
             case "incr":
-                commandHandler.incr(command);
+               res= commandHandler.incr(command);
+               break;
         }
 
         client.send(res,data);
