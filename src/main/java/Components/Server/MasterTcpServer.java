@@ -2,6 +2,7 @@ package Components.Server;
 
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
+import Components.Repository.OptimisticLockException;
 import Components.Repository.Store;
 import Components.Repository.Value;
 import Components.Service.CommandHandler;
@@ -48,7 +49,7 @@ public class MasterTcpServer {
 
         ServerSocket serverSocket = null;
         Socket clientSocket = null;
-        ExecutorService executor= Executors.newFixedThreadPool(10);
+        ExecutorService executor= Executors.newCachedThreadPool();
         int port = redisConfig.getPort();
         try {
             serverSocket = new ServerSocket(port);
@@ -74,6 +75,7 @@ public class MasterTcpServer {
             log.error(e.getMessage());
         } finally {
             try {
+                executor.shutdown();
                 if (clientSocket != null) {
                     clientSocket.close();
                 }
@@ -85,12 +87,11 @@ public class MasterTcpServer {
 
     public void handleClients(Client client) throws IOException {
         connectionPool.addClient(client);
-        while(client.socket.isConnected()){
+        while(true){
             byte [] buffer=new byte[client.socket.getReceiveBufferSize()];
             int bytesRead=client.inputStream.read(buffer);
             if(bytesRead==-1){
                 log.info("Client disconnected: "+client.id);
-                connectionPool.removeClient(client);
                 break;
             }
             if(bytesRead > 0){
@@ -119,6 +120,10 @@ public class MasterTcpServer {
 
     private void transactionalController(String[] command, Client client) throws IOException {
         switch (command[0].toLowerCase()){
+            case "watch":
+                String res="-ERR WATCH inside MULTI is not allowed\r\n";
+                client.send(res);
+                break;
             case "exec":
                 if(client.commandQueue==null || client.commandQueue.isEmpty()){
                     client.send("*0\r\n");
@@ -127,27 +132,33 @@ public class MasterTcpServer {
                 }
                 Queue<String []> commands= new LinkedList<>(client.commandQueue);
 
-                BiFunction<String [], Map<String, Value>,String> transactionCacheApplier= commandHandler.getTransactionaCommandCacheApplier();
-
-                store.executeTransaction(client,transactionCacheApplier);
-
-                client.endTransaction();
-                while(!commands.isEmpty()){
-                    String [] commandToPropagate= commands.poll();
-                    String respArr= respSerializer.respArray(commandToPropagate);
-                    byte [] bytes=respArr.getBytes();
-                    connectionPool.bytesSentToSlaves+=bytes.length;
-                    try {
+                BiFunction<String [], Map<String, Value>,String> transactionCacheApplier= commandHandler.getTransactionaCommandCacheApplier(client);
+                try{
+                    store.executeTransaction(client,transactionCacheApplier);
+                    while(!commands.isEmpty()) {
+                        String[] commandToPropagate = commands.poll();
+                        String respArr = respSerializer.respArray(commandToPropagate);
+                        byte[] bytes = respArr.getBytes();
+                        connectionPool.bytesSentToSlaves += bytes.length;
                         CompletableFuture.runAsync(() -> propagateToSlaves(command));
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
                     }
+                    String response= respSerializer.respArray(client.transactionResponse);
+                    client.send(response);
+                }catch (OptimisticLockException e) {
+                    client.send("*-1\r\n");
+                }finally {
+                    client.endTransaction();
                 }
-
-                String response = respSerializer.respArray(client.transactionResponse);
-                client.send(response);
                 break;
             case "discard":
+                if(client.watchSet!=null){
+                    for(String key:client.watchSet){
+                        store.removeWatcherForKey(key,client);
+                    }
+                }
+                if(store.failTransactionFor.contains(client.id)){
+                    store.failTransactionFor.remove(client.id);
+                }
                 client.endTransaction();
                 client.send("+OK\r\n");
                 break;
@@ -160,7 +171,9 @@ public class MasterTcpServer {
     }
 
     private boolean isTransactionalControlCommand(String s) {
-        return (s.equalsIgnoreCase("exec") || s.equalsIgnoreCase("discard"));
+        return (s.equalsIgnoreCase("exec")
+                || s.equalsIgnoreCase("discard")
+                || s.equalsIgnoreCase("watch"));
     }
 
     public ResponseDto caseHandler(String[] command,Client client){
@@ -219,6 +232,21 @@ public class MasterTcpServer {
                 break;
             case "discard":
                 res="-ERR DISCARD without MULTI\r\n";
+                break;
+            case "watch":
+                res=commandHandler.watch(command,client);
+                break;
+            case "unwatch":
+                if(client.watchSet!=null){
+                    for(String key:client.watchSet){
+                        store.removeWatcherForKey(key,client);
+                    }
+                }
+                if(store.failTransactionFor.contains(client.id)){
+                    store.failTransactionFor.remove(client.id);
+                }
+                client.watchSet=null;
+                res="+OK\r\n";
                 break;
         }
         return new ResponseDto(res,data);

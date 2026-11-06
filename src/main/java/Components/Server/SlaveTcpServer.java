@@ -47,15 +47,15 @@ public class SlaveTcpServer {
 
         ServerSocket serverSocket = null;
         Socket clientSocket = null;
-        ExecutorService executor= Executors.newFixedThreadPool(10);
+        ExecutorService executor= Executors.newCachedThreadPool();
         int port= redisConfig.getPort();
         try {
             serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
 
-            CompletableFuture<Void> slaveConnectionFuture = CompletableFuture.runAsync(this::initiateSlaveConnection);
-            slaveConnectionFuture.thenRun(()->{
-                System.out.println("Slave connection established successfully.");
+            executor.submit(()->{
+                initiateSlaveConnection();
+                System.out.println("Replication Completed");
             });
 
             int id=0;
@@ -79,6 +79,7 @@ public class SlaveTcpServer {
             log.error(e.getMessage());
         } finally {
             try {
+                executor.shutdown();
                 if (clientSocket != null) {
                     clientSocket.close();
                 }
@@ -235,12 +236,11 @@ public class SlaveTcpServer {
 
     public void handleClients(Client client) throws IOException {
         connectionPool.addClient(client);
-        while(client.socket.isConnected()){
+        while(true){
             byte [] buffer=new byte[client.socket.getReceiveBufferSize()];
             int bytesRead=client.inputStream.read(buffer);
             if(bytesRead==-1){
                 log.info("Client disconnected: "+client.id);
-                connectionPool.removeClient(client);
                 break;
             }
             if(bytesRead > 0){

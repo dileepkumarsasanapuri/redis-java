@@ -20,13 +20,37 @@ import java.util.function.BiFunction;
 public class Store {
     private final ReentrantReadWriteLock rwLock=new ReentrantReadWriteLock();
     public ConcurrentHashMap<String , Value> map;
-    private static final Logger log =
-            LoggerFactory.getLogger(Store.class);
+    public ConcurrentHashMap<String, Set<Integer>>  watchingClientsListForKeys;
+    public Set<Integer> failTransactionFor;
+
+    private static final Logger log =  LoggerFactory.getLogger(Store.class);
     @Autowired
     private RespSerializer respSerializer;
 
     public Store() {
         this.map = new ConcurrentHashMap<>();
+        watchingClientsListForKeys= new ConcurrentHashMap<>();
+        failTransactionFor = ConcurrentHashMap.newKeySet();
+    }
+
+    public boolean isWatchedKey(String key){
+        return watchingClientsListForKeys.containsKey(key);
+    }
+
+    public void addToFailTransactionForExcept(String key,Client curClient){
+        Set<Integer> watchers= watchingClientsListForKeys.getOrDefault(key,new HashSet<>());
+        for(int id:watchers){
+            if(id!=curClient.id){
+                this.failTransactionFor.add(id);
+            }
+        }
+    }
+
+    public void addToFailTransactionFor(String key){
+        Set<Integer> watchers= watchingClientsListForKeys.getOrDefault(key,new HashSet<>());
+        for(int id:watchers){
+            this.failTransactionFor.add(id);
+        }
     }
 
     public Set<String> getKeys() {
@@ -127,7 +151,50 @@ public class Store {
                     this.map.put(key,val);
                 }
             }
+            if(client.watchSet!=null){
+                for(String key:client.watchSet){
+                    removeWatcherForKey(key,client);
+                }
+            }
             client.transactionResponse.addAll(localResponses);
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public boolean addWatcherForKey(String key,Client watcher){
+        rwLock.writeLock().lock();
+        try{
+            Set<Integer> watchers= watchingClientsListForKeys.getOrDefault(key,null);
+            if(watchers==null){
+                watchers=new HashSet<>();
+            }
+            watchers.add(watcher.id);
+            watchingClientsListForKeys.put(key,watchers);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public boolean removeWatcherForKey(String key,Client client){
+        rwLock.writeLock().lock();
+        try{
+            Set<Integer> watchers = watchingClientsListForKeys.get(key);
+            if(watchers==null){
+               return true;
+            }
+            watchers.remove(client.id);
+            if(watchers.isEmpty()) {
+                watchingClientsListForKeys.put(key, watchers);
+            }else{
+                watchingClientsListForKeys.put(key,watchers);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
         }finally {
             rwLock.writeLock().unlock();
         }

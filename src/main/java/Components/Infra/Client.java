@@ -6,10 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public class Client {
     public Socket socket;
@@ -20,6 +17,18 @@ public class Client {
     private boolean transactionalContext;
     public Queue<String []> commandQueue;
     public List<String> transactionResponse; // strings already in rest format
+    public Set<String> watchSet;
+
+    public boolean isWatchSetInitiated(){
+        return this.watchSet!=null;
+    }
+
+    public void addToWatchSet(String key){
+        if(!isWatchSetInitiated()){
+            this.watchSet=new HashSet<>();
+        }
+        this.watchSet.add(key);
+    }
 
     public boolean getTransactionalContext(){
         return transactionalContext;
@@ -38,6 +47,7 @@ public class Client {
     public boolean endTransaction(){
         commandQueue=null;
         transactionalContext=false;
+        watchSet=null;
         return transactionalContext;
     }
 

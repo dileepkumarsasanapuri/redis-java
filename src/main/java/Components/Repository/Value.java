@@ -16,4 +16,9 @@ public class Value {
         this.expiresAt = expiresAt;
         this.valueTobeDeleted=false;
     }
+
+    @Override
+    public String toString(){
+        return val;
+    }
 }
