@@ -2,6 +2,8 @@ package Components.Server;
 
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
+import Components.Repository.Store;
+import Components.Repository.Value;
 import Components.Service.CommandHandler;
 import Components.Service.RespSerializer;
 import Components.Service.ResponseDto;
@@ -18,11 +20,11 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 
 
 @Component
@@ -36,6 +38,8 @@ public class MasterTcpServer {
     private RedisConfig redisConfig;
     @Autowired
     private ConnectionPool connectionPool;
+    @Autowired
+    private Store store;
 
     private static final Logger log = LoggerFactory.getLogger(MasterTcpServer.class);
 
@@ -102,6 +106,64 @@ public class MasterTcpServer {
     }
 
     private void handleCommand(String[] command, Client client) throws IOException {
+        if(!client.getTransactionalContext()){
+            ResponseDto responseDto= caseHandler(command,client);
+            client.send(responseDto);
+        }
+        else if(!isTransactionalControlCommand(command[0])){ // not exec or not discard
+            addCommandToTransaction(command,client);
+        }else{
+            transactionalController(command,client);
+        }
+    }
+
+    private void transactionalController(String[] command, Client client) throws IOException {
+        switch (command[0].toLowerCase()){
+            case "exec":
+                if(client.commandQueue==null || client.commandQueue.isEmpty()){
+                    client.send("+OK\r\n");
+                    client.endTransaction();
+                    return;
+                }
+                Queue<String []> commands= new LinkedList<>(client.commandQueue);
+
+                BiFunction<String [], Map<String, Value>,String> transactionCacheApplier= commandHandler.getTransactionaCommandCacheApplier();
+
+                store.executeTransaction(client,transactionCacheApplier);
+
+                client.endTransaction();
+                while(!commands.isEmpty()){
+                    String [] commandToPropagate= commands.poll();
+                    String respArr= respSerializer.respArray(commandToPropagate);
+                    byte [] bytes=respArr.getBytes();
+                    connectionPool.bytesSentToSlaves+=bytes.length;
+                    try {
+                        CompletableFuture.runAsync(() -> propagateToSlaves(command));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                String response = respSerializer.respArray(client.transactionResponse);
+                client.send(response);
+                break;
+            case "discard":
+                client.endTransaction();
+                client.send("+OK\r\n");
+                break;
+        }
+    }
+
+    private void addCommandToTransaction(String[] command, Client client) throws IOException {
+        client.commandQueue.offer(command);
+        client.send("+QUEUED\r\n");
+    }
+
+    private boolean isTransactionalControlCommand(String s) {
+        return (s.equalsIgnoreCase("exec") || s.equalsIgnoreCase("discard"));
+    }
+
+    public ResponseDto caseHandler(String[] command,Client client){
         String res="";
         byte [] data=null;
         switch (command[0].toLowerCase()){
@@ -135,28 +197,35 @@ public class MasterTcpServer {
                 res=commandHandler.replconf(command,client);
                 break;
             case "psync":
-              ResponseDto resDto=commandHandler.psync(command);
-              res=resDto.response;
-              data= resDto.data;
+                ResponseDto resDto=commandHandler.psync(command);
+                res=resDto.response;
+                data= resDto.data;
                 break;
             case "wait":
-               if(connectionPool.bytesSentToSlaves==0){
-                   res= respSerializer.respInteger(connectionPool.slavesThatareUp);
-                   break;
-               }
+                if(connectionPool.bytesSentToSlaves==0){
+                    res= respSerializer.respInteger(connectionPool.slavesThatareUp);
+                    break;
+                }
                 Instant now=Instant.now();
                 res= commandHandler.wait(command, now);
                 connectionPool.slavesThatareUp=0;
                 break;
             case "incr":
-               res= commandHandler.incr(command);
-               break;
+                res= commandHandler.incr(command);
+                break;
+            case "multi":
+                client.beginTransaction();
+                res="+OK\r\n";
+                break;
+            case "exec":
+                res = "-ERR EXEC without MULTI\r\n";
+                break;
+            case "discard":
+                res="-ERR DISCARD without MULTI\r\n";
+                break;
         }
-
-        client.send(res,data);
-
+        return new ResponseDto(res,data);
     }
-
     private void propagateToSlaves(String[] command) {
         String commandRespStr= respSerializer.respArray(command);
           try{

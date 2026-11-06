@@ -1,5 +1,6 @@
 package Components.Repository;
 
+import Components.Infra.Client;
 import Components.Service.RespSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -9,12 +10,15 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
 
 
 @Component
 public class Store {
+    private final ReentrantReadWriteLock rwLock=new ReentrantReadWriteLock();
     public ConcurrentHashMap<String , Value> map;
     private static final Logger log =
             LoggerFactory.getLogger(Store.class);
@@ -26,9 +30,15 @@ public class Store {
     }
 
     public Set<String> getKeys() {
-        return map.keySet();
+        rwLock.readLock().lock();
+        try {
+            return map.keySet();
+        } finally {
+           rwLock.readLock().unlock();
+        }
     }
     public String set(String key,String val){
+        rwLock.writeLock().lock();
         LocalDateTime createdAt=LocalDateTime.now();
         LocalDateTime expiresAt=LocalDateTime.MAX;
         Value value=new Value(val,createdAt,expiresAt);
@@ -38,10 +48,13 @@ public class Store {
         } catch (Exception e) {
             log.error(e.getMessage());
             return "$-1\r\n";
+        } finally {
+            rwLock.writeLock().unlock();
         }
     }
 
     public String set(String key,String val, int ttl){
+        rwLock.writeLock().lock();
         LocalDateTime createdAt=LocalDateTime.now();
         LocalDateTime expiresAt=createdAt.plus(Duration.ofMillis(ttl));
         Value value=new Value(val,createdAt,expiresAt);
@@ -51,10 +64,13 @@ public class Store {
         } catch (Exception e) {
             log.error(e.getMessage());
             return "$-1\r\n";
+        } finally {
+            rwLock.writeLock().unlock();
         }
     }
 
     public String get(String key){
+        rwLock.readLock().lock();
         try{
             Value value = map.get(key);
             LocalDateTime now=LocalDateTime.now();
@@ -66,10 +82,13 @@ public class Store {
         } catch (Exception e) {
             log.error(e.getMessage());
             return "$-1\r\n";
+        } finally {
+            rwLock.readLock().unlock();
         }
     }
 
     public Value getValue(String key) {
+        rwLock.readLock().lock();
         try{
             Value value = map.get(key);
             LocalDateTime now=LocalDateTime.now();
@@ -81,6 +100,36 @@ public class Store {
         } catch (Exception e) {
             log.error(e.getMessage());
             return null;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public void executeTransaction(
+            Client client,
+            BiFunction<String [], Map<String, Value>,String> transactionCacheApplier
+    ){
+        rwLock.writeLock().lock();
+        Map<String, Value> localCache= new HashMap<>();
+        List<String> localResponses = new ArrayList<>();
+        try {
+            while (!client.commandQueue.isEmpty()){
+                String [] command= client.commandQueue.poll();
+                String res = transactionCacheApplier.apply(command, localCache);
+               localResponses.add(res);
+            }
+            for(Map.Entry<String,Value> entry:localCache.entrySet()){
+                String key=entry.getKey();
+                Value val=entry.getValue();
+                if(val.valueTobeDeleted){
+                    this.map.remove(key);
+                }else{
+                    this.map.put(key,val);
+                }
+            }
+            client.transactionResponse.addAll(localResponses);
+        }finally {
+            rwLock.writeLock().unlock();
         }
     }
 }

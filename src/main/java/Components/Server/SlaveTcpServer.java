@@ -291,6 +291,6 @@ public class SlaveTcpServer {
                 break;
 
         }
-      client.send(res,data);
+      client.send(new ResponseDto(res,data));
     }
 }
