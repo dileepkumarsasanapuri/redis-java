@@ -241,7 +241,7 @@ public class Store {
             if(value==null){
                 return new String[0];
             }else if(value.type!=ValueType.LIST){
-                throw new RuntimeException("-ERR WRONGTYPE Operation against a key holding the wrong king of value type");
+                throw new RuntimeException("-ERR WRONGTYPE Operation against a key holding the wrong kind of value\r\n");
             }
             int len=value.list.size();
 
@@ -250,7 +250,7 @@ public class Store {
             if(stPositive > stopPositive ){
                 return new String[0];
             }
-            int stopExclusive = stopPositive++;
+            int stopExclusive = stopPositive+1;
             if(stopExclusive >= len) {
                 return new String[0];
             }
