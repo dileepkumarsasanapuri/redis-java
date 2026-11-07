@@ -276,6 +276,15 @@ public class Store {
     }
 
     public String lpop(String key) {
-        return "";
+        rwLock.writeLock().lock();
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                return "";
+            }
+            return value.list.removeFirst();
+        }finally {
+            rwLock.writeLock().unlock();
+        }
     }
 }
