@@ -264,6 +264,15 @@ public class Store {
     }
 
     public int llen(String key) {
-        return 0;
+        rwLock.readLock().lock();
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                return 0;
+            }
+            return value.list.size();
+        }finally {
+            rwLock.readLock().unlock();
+        }
     }
 }
