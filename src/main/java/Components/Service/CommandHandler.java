@@ -399,4 +399,17 @@ public class CommandHandler {
         return respSerializer.respInteger(len);
     }
 
+    public String lrange(String[] command) {
+        int st= Integer.parseInt(command[2]);
+        int stop= Integer.parseInt(command[3]);
+        String key=command[1];
+        String []list=store.lrange(key, st,stop);
+        if(list.length==0){
+            return "*0\r\n";
+        }
+        return respSerializer.respArray(list);
+    }
+
+    public String llen(String[] command) {
+    }
 }

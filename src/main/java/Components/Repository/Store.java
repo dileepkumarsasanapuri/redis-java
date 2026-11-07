@@ -233,4 +233,33 @@ public class Store {
             rwLock.writeLock().unlock();
         }
     }
+
+    public String[] lrange(String key, int st, int stop) {
+        rwLock.readLock().lock();
+        try {
+            Value value= map.get(key);
+            if(value==null){
+                return new String[0];
+            }else if(value.type!=ValueType.LIST){
+                throw new RuntimeException("-ERR WRONGTYPE Operation against a key holding the wrong king of value type");
+            }
+            int len=value.list.size();
+
+            int stPositive = st<0 ? st+len : st;
+            int stopPositive = stop<0 ? stop+len:stop;
+            if(stPositive > stopPositive ){
+                return new String[0];
+            }
+            int stopExclusive = stopPositive++;
+            if(stopExclusive >= len) {
+                return new String[0];
+            }
+            stopExclusive = Math.min(stopExclusive,len);
+            stPositive = Math.max(stPositive,0);
+            List<String> snapshot = new ArrayList<>(value.list);
+            return snapshot.subList(stPositive,stopExclusive).toArray(new String[0]);
+        }finally {
+            rwLock.readLock().unlock();
+        }
+    }
 }

@@ -345,6 +345,12 @@ public class SlaveTcpServer {
             case "unsubscribe":
                 res=commandHandler.unsubscribe(command,client);
                 break;
+            case "lrange":
+                res= commandHandler.lrange(command);
+                break;
+            case "llen":
+                res=commandHandler.llen(command);
+                break;
 
         }
       client.send(new ResponseDto(res,data));
