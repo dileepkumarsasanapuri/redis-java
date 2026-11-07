@@ -262,4 +262,8 @@ public class Store {
             rwLock.readLock().unlock();
         }
     }
+
+    public int llen(String key) {
+        return 0;
+    }
 }

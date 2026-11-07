@@ -411,6 +411,7 @@ public class CommandHandler {
     }
 
     public String llen(String[] command) {
-        return "";
+        String key=command[1];
+        return respSerializer.respInteger(store.llen(key));
     }
 }
