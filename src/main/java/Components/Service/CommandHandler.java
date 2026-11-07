@@ -411,5 +411,6 @@ public class CommandHandler {
     }
 
     public String llen(String[] command) {
+        return "";
     }
 }
