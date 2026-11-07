@@ -275,4 +275,8 @@ public class Store {
             rwLock.readLock().unlock();
         }
     }
+
+    public String lpop(String key) {
+        return "";
+    }
 }

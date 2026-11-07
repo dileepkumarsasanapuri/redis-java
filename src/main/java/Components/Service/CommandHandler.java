@@ -416,6 +416,15 @@ public class CommandHandler {
     }
 
     public String lpop(String[] command) {
-        return "";
+        String key=command[1];
+        if(command.length==2){
+            return respSerializer.serialize(store.lpop(key));
+        }
+        int popTimes= Integer.parseInt(command[2]);
+        String []pops= new String[popTimes];
+        for(int i=0;i<popTimes;i++){
+            pops[i]=store.lpop(key);
+        }
+        return respSerializer.respArray(pops);
     }
 }
