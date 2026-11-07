@@ -11,6 +11,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 
@@ -286,5 +288,37 @@ public class Store {
         }finally {
             rwLock.writeLock().unlock();
         }
+    }
+
+    public String blpop(String key) throws InterruptedException {
+        rwLock.writeLock().lock();
+        LinkedBlockingDeque<String> deque;
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                value=new Value(ValueType.LIST,LocalDateTime.now(),LocalDateTime.MAX);
+                map.put(key,value);
+            }
+            deque=value.list;
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+        return deque.takeFirst();
+    }
+
+    public String blpop_timeout(String key, long timeOutMs) throws InterruptedException {
+        rwLock.writeLock().lock();
+        LinkedBlockingDeque<String> deque;
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                value=new Value(ValueType.LIST,LocalDateTime.now(),LocalDateTime.MAX);
+                map.put(key,value);
+            }
+            deque=value.list;
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+        return deque.pollFirst(timeOutMs, TimeUnit.MILLISECONDS);
     }
 }

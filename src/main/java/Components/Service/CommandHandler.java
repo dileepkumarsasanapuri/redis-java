@@ -430,6 +430,33 @@ public class CommandHandler {
 
     public String blpop(String[] command) {
         String key=command[1];
-        return "";
+        double timeOut= Double.parseDouble(command[2]);
+        long timeOutMs=(long)(timeOut*1000);
+        try{
+            if(command.length==2 || timeOut==0){
+                System.out.println("--- indefinite block -----");
+                String e= store.blpop(key);
+                if(e==null){
+                    System.out.println("---- retunring null array---");
+                    return "*-1\r\n"; // timeout expired, nothing popped;
+                }
+                String res[]= new String[2];
+                res[0]=key;
+                res[1]=e;
+                return respSerializer.respArray(res);
+            }
+            System.out.println("--- blocking for "+timeOutMs+"----");
+            String e=store.blpop_timeout(key,timeOutMs);
+            if(e==null){
+                System.out.println("---- retunring null array---");
+                return "*-1\r\n"; // timeout expired, nothing popped;
+            }
+            String res[]= new String[2];
+            res[0]=key;
+            res[1]=e;
+            return respSerializer.respArray(res);
+        } catch (Exception e) {
+            return "*-1\r\n";
+        }
     }
 }
