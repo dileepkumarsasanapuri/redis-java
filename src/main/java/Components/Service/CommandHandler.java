@@ -414,4 +414,8 @@ public class CommandHandler {
         String key=command[1];
         return respSerializer.respInteger(store.llen(key));
     }
+
+    public String lpop(String[] command) {
+        return "";
+    }
 }

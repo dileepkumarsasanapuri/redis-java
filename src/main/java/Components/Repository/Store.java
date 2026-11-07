@@ -251,7 +251,7 @@ public class Store {
                 return new String[0];
             }
             int stopExclusive = stopPositive+1;
-            if(stopExclusive >= len) {
+            if(stPositive >= len) {
                 return new String[0];
             }
             stopExclusive = Math.min(stopExclusive,len);

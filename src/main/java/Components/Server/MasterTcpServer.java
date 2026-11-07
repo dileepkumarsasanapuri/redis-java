@@ -311,6 +311,9 @@ public class MasterTcpServer {
             case "llen":
                 res=commandHandler.llen(command);
                 break;
+            case "lpop":
+                res=commandHandler.lpop(command);
+                break;
 
 
 
