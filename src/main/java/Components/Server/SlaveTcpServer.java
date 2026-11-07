@@ -203,6 +203,21 @@ public class SlaveTcpServer {
 
             case "replconf":
                 res=commandHandler.replconf(commandArray,master);
+                break;
+            case "rpush":
+                res = commandHandler.rpush(commandArray);
+                String commandRespStringRpush=respSerializer.respArray(commandArray);
+                byte[] toCountRpush = commandRespStringRpush.getBytes();
+                connectionPool.bytesSentToSlaves+=toCountRpush.length;
+                CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
+                break;
+            case "lpush":
+                res = commandHandler.lpush(commandArray);
+                String commandRespStringLpush=respSerializer.respArray(commandArray);
+                byte[] toCountLpush = commandRespStringLpush.getBytes();
+                connectionPool.bytesSentToSlaves+=toCountLpush.length;
+                CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
+                break;
         }
         return res;
     }

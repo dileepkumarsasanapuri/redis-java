@@ -291,6 +291,21 @@ public class MasterTcpServer {
             case "publish":
                 res=commandHandler.publish(command);
                 break;
+            case "rpush":
+                res = commandHandler.rpush(command);
+                String commandRespStringRpush=respSerializer.respArray(command);
+                byte[] toCountRpush = commandRespStringRpush.getBytes();
+                connectionPool.bytesSentToSlaves+=toCountRpush.length;
+                CompletableFuture.runAsync(()-> propagateToSlaves(command));
+                break;
+            case "lpush":
+                res = commandHandler.lpush(command);
+                String commandRespStringLpush=respSerializer.respArray(command);
+                byte[] toCountLpush = commandRespStringLpush.getBytes();
+                connectionPool.bytesSentToSlaves+=toCountLpush.length;
+                CompletableFuture.runAsync(()-> propagateToSlaves(command));
+                break;
+
 
         }
         return new ResponseDto(res,data);

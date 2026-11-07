@@ -378,4 +378,25 @@ public class CommandHandler {
         int res= clientChannelPool.publish(channelId,msg);
         return respSerializer.respInteger(res);
     }
+
+    public String rpush(String[] command) {
+        String key= command[1];
+        int len=0;
+        for(int i=2;i<command.length;i++){
+            String val=command[i];
+            len=store.rpush(key,val);
+        }
+        return respSerializer.respInteger(len);
+    }
+
+    public String lpush(String[] command) {
+        String key= command[1];
+        int len=0;
+        for(int i=2;i<command.length;i++){
+            String val=command[i];
+            len=store.lpush(key,val);
+        }
+        return respSerializer.respInteger(len);
+    }
+
 }

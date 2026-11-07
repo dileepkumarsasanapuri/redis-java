@@ -199,4 +199,38 @@ public class Store {
             rwLock.writeLock().unlock();
         }
     }
+
+    public int rpush(String key, String val) {
+        rwLock.writeLock().lock();
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                value= new Value(ValueType.LIST,LocalDateTime.now(),LocalDateTime.MAX);
+                map.put(key,value);
+            } else if (value.type!=ValueType.LIST) {
+                return -1;
+            }
+            value.list.add(val);
+            return value.list.size();
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public int lpush(String key, String val) {
+        rwLock.writeLock().lock();
+        try{
+            Value value=map.get(key);
+            if(value==null){
+                value= new Value(ValueType.LIST,LocalDateTime.now(),LocalDateTime.MAX);
+                map.put(key,value);
+            } else if (value.type!=ValueType.LIST) {
+                return -1;
+            }
+            value.list.addFirst(val);
+            return value.list.size();
+        }finally {
+            rwLock.writeLock().unlock();
+        }
+    }
 }
