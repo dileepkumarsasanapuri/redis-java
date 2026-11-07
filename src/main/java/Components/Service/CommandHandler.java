@@ -427,4 +427,9 @@ public class CommandHandler {
         }
         return respSerializer.respArray(pops);
     }
+
+    public String blpop(String[] command) {
+        String key=command[1];
+        return "";
+    }
 }

@@ -17,7 +17,7 @@ import java.util.function.BiFunction;
 
 @Component
 public class Store {
-    private final ReentrantReadWriteLock rwLock=new ReentrantReadWriteLock();
+    private final ReentrantReadWriteLock rwLock=new ReentrantReadWriteLock(true);
     public ConcurrentHashMap<String , Value> map;
     public ConcurrentHashMap<String, Set<Integer>>  watchingClientsListForKeys;
     public Set<Integer> failTransactionFor;
