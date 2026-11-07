@@ -48,7 +48,7 @@ public class CommandHandler {
         return "+PONG\r\n";
     }
     public String echo(String []command){
-       return respSerializer.serialize(command[1]);
+       return respSerializer.serializeBulkString(command[1]);
     }
     public String set(String []command){
         String key= null;
@@ -93,7 +93,7 @@ public class CommandHandler {
             String masterReplOffset= "master_repl_offset:"+ redisConfig.getMasterReplOffset();
             String [] info= new String[]{role,masterReplID,masterReplOffset};
             String replicationInfo= String.join("\r\n",info);
-            return respSerializer.serialize(replicationInfo);
+            return respSerializer.serializeBulkString(replicationInfo);
         }
         return "";
     }
@@ -337,7 +337,7 @@ public class CommandHandler {
         }else{
             value=cachedValue;
         }
-        return respSerializer.serialize(value.val);
+        return respSerializer.serializeBulkString(value.val);
     }
 
     public String watch(String[] command, Client client) {
@@ -353,7 +353,7 @@ public class CommandHandler {
         int numberOfChannels= clientChannelPool.subscribe(client,channelId);
         String numberOfChannelsResp=respSerializer.respInteger(numberOfChannels);
         String response = "*3\r\n$9\r\nsubscribe\r\n"
-                + respSerializer.serialize(channelId)
+                + respSerializer.serializeBulkString(channelId)
                 + numberOfChannelsResp;
 
         client.isSubscribed=true;
@@ -365,7 +365,7 @@ public class CommandHandler {
         int numberOfChannels= clientChannelPool.unsubscribe(client,channelId);
         String numberOfChannelsResp=respSerializer.respInteger(numberOfChannels);
         String response = "*3\r\n$11\r\nunsubscribe\r\n"
-                + respSerializer.serialize(channelId)
+                + respSerializer.serializeBulkString(channelId)
                 + numberOfChannelsResp;
 
         client.isSubscribed=false;
@@ -418,7 +418,7 @@ public class CommandHandler {
     public String lpop(String[] command) {
         String key=command[1];
         if(command.length==2){
-            return respSerializer.serialize(store.lpop(key));
+            return respSerializer.serializeBulkString(store.lpop(key));
         }
         int popTimes= Integer.parseInt(command[2]);
         String []pops= new String[popTimes];

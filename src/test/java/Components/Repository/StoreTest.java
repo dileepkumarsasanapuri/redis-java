@@ -34,7 +34,7 @@ class StoreTest {
         String setResponse=store.set(key,val);
         assertEquals("+OK\r\n",setResponse);
         String getResponse=store.get(key);
-        assertEquals(respSerializer.serialize(val),getResponse);
+        assertEquals(respSerializer.serializeBulkString(val),getResponse);
     }
 
     @Test
@@ -45,7 +45,7 @@ class StoreTest {
         String setResponse=store.set(key,val,expiry);
         assertEquals("+OK\r\n",setResponse);
         String getResponse=store.get(key);
-        assertEquals(respSerializer.serialize(val),getResponse);
+        assertEquals(respSerializer.serializeBulkString(val),getResponse);
 
         Thread.sleep(1500);
         String getResponseAfterExpiry=store.get(key);
@@ -63,17 +63,17 @@ class StoreTest {
         assertEquals("+OK\r\n",setResponse);
 
         String getResponse=store.get(key);
-        assertEquals(respSerializer.serialize(val),getResponse);
+        assertEquals(respSerializer.serializeBulkString(val),getResponse);
 
         String setResponseNew=store.set(key,newVal,expiry*2);
         assertEquals("+OK\r\n",setResponseNew);
 
         String getResponseNew=store.get(key);
-        assertEquals(respSerializer.serialize(newVal),getResponseNew);
+        assertEquals(respSerializer.serializeBulkString(newVal),getResponseNew);
 
         Thread.sleep(1500);
         String getResponseAfterExpiry=store.get(key);
-        assertEquals(respSerializer.serialize(newVal),getResponseAfterExpiry);
+        assertEquals(respSerializer.serializeBulkString(newVal),getResponseAfterExpiry);
     }
 
     @Test

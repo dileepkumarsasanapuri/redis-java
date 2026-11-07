@@ -1,6 +1,5 @@
 package Components.Service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,9 +11,12 @@ import java.util.List;
 
 @Component
 public class RespSerializer {
-    private static final Logger log =
-            LoggerFactory.getLogger(RespSerializer.class);
-    public String serialize(String command){
+    private static final Logger log = LoggerFactory.getLogger(RespSerializer.class);
+
+    public String serializeBulkString(String command){
+        if(command.equals("")){
+            return "$-1\r\n";
+        }
         StringBuilder sb=new StringBuilder();
         sb.append("$"+command.length()+"\r\n");
         sb.append(command+"\r\n");

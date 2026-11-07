@@ -2,7 +2,6 @@ package Components.Repository;
 
 import Components.Infra.Client;
 import Components.Service.RespSerializer;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,7 +101,7 @@ public class Store {
                 map.remove(key);
                 return "$-1\r\n";
             }
-            return respSerializer.serialize(value.val);
+            return respSerializer.serializeBulkString(value.val);
         } catch (Exception e) {
             log.error(e.getMessage());
             return "$-1\r\n";
