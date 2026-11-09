@@ -14,13 +14,14 @@ public class RespSerializer {
     private static final Logger log = LoggerFactory.getLogger(RespSerializer.class);
 
     public String serializeBulkString(String command){
-        if(command.equals("")){
+        if(command == null){
             return "$-1\r\n";
         }
-        StringBuilder sb=new StringBuilder();
-        sb.append("$"+command.length()+"\r\n");
-        sb.append(command+"\r\n");
-        return sb.toString();
+        if(command.isEmpty()){
+            return "$0\r\n\r\n";
+        }
+        byte[] bytes = command.getBytes(StandardCharsets.UTF_8);
+        return "$" + bytes.length + "\r\n" + command + "\r\n";
     }
 
     public int getParts(char []dataArr, int i, String []subArray){
@@ -91,15 +92,20 @@ public class RespSerializer {
     }
 
     public String respArray(String []command) {
-        List<String> res= new ArrayList<>();
-        int  len=command.length;
-        res.add("*"+len);
-        for(String s:command){
-            len=s.length();
-            res.add("$"+len);
-            res.add(s);
+        if (command == null) {
+            return "*-1\r\n";
         }
-        return String.join("\r\n",res)+"\r\n";
+        StringBuilder sb = new StringBuilder();
+        sb.append("*").append(command.length).append("\r\n");
+        for (String s : command) {
+            if (s == null) {
+                sb.append("$-1\r\n");
+            } else {
+                byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+                sb.append("$").append(bytes.length).append("\r\n").append(s).append("\r\n");
+            }
+        }
+        return sb.toString();
     }
 
     public String respArray(List<String> command) {

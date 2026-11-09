@@ -146,7 +146,7 @@ public class CommandHandler {
             String  fullResHeader= "$"+len+"\r\n";
             byte [] header= fullResHeader.getBytes();
 
-            connectionPool.slavesThatareUp++;
+            connectionPool.setSlavesThatAreUp(connectionPool.getSlavesThatAreUp() + 1);
             return new ResponseDto(res,concatenate(header,rdbFile));
         }
         else{
@@ -157,36 +157,40 @@ public class CommandHandler {
     public String wait(String[] command, Instant now) {
         String [] getAcArr=new String[]{"REPLCONF","GETACK","*"};
         String getAck=respSerializer.respArray(getAcArr);
-        byte []getAckBytes=getAck.getBytes();
+        byte []getAckBytes=getAck.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         int bufferSize= getAckBytes.length;
 
         int required=Integer.parseInt(command[1]);
-        int time = Integer.parseInt(command[2]);
+        long time = Long.parseLong(command[2]);
 
         for (Slave sl:connectionPool.getSlaves()){
             CompletableFuture.runAsync(()->{
                 try {
                     sl.connection.send(getAckBytes);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    log.error("Failed to send GETACK to slave: {}", e.getMessage());
                 }
             });
         }
         int res=0;
+        long deadline = System.currentTimeMillis() + time;
         while(true){
-            if(res>=required){
+            res = connectionPool.getSlavesThatAreUp();
+            if(res >= required){
                 break;
             }
-            if(Duration.between(now,Instant.now()).toMillis()>=time){
+            if(System.currentTimeMillis() >= deadline){
                 break;
             }
-            res=connectionPool.slavesThatareUp;
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
-        connectionPool.bytesSentToSlaves+=bufferSize;
-        if(res> required){
-            return respSerializer.respInteger(required);
-        }
-        return respSerializer.respInteger(res);
+        connectionPool.addBytesSentToSlaves(bufferSize);
+        return respSerializer.respInteger(Math.min(res, required));
     }
 
     public String incr(String[] command) {

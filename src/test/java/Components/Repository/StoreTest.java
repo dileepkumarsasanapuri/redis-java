@@ -1,12 +1,8 @@
 package Components.Repository;
 
 import Components.Service.RespSerializer;
-import Config.AppConfig;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,18 +10,15 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Slf4j
-@SpringBootTest(classes = AppConfig.class)
 class StoreTest {
 
-    @Autowired
     private Store store;
-    @Autowired
     private RespSerializer respSerializer;
 
     @BeforeEach
     public void setup(){
-        store.map.clear();
+        respSerializer = new RespSerializer();
+        store = new Store(respSerializer);
     }
     @Test
     public void testSetAndGet(){
@@ -41,13 +34,13 @@ class StoreTest {
     public void testSetAndGetWithExpiry() throws InterruptedException {
         String key="testKey";
         String val="testValue";
-        int expiry=1000; // 1 second
+        int expiry=100; // 100ms
         String setResponse=store.set(key,val,expiry);
         assertEquals("+OK\r\n",setResponse);
         String getResponse=store.get(key);
         assertEquals(respSerializer.serializeBulkString(val),getResponse);
 
-        Thread.sleep(1500);
+        Thread.sleep(150);
         String getResponseAfterExpiry=store.get(key);
         assertEquals("$-1\r\n",getResponseAfterExpiry);
     }
@@ -57,7 +50,7 @@ class StoreTest {
         String key="testKey";
         String val="testValue";
         String newVal="newValue";
-        int expiry=1000; // 1 second
+        int expiry=100; // 100ms
 
         String setResponse=store.set(key,val,expiry);
         assertEquals("+OK\r\n",setResponse);
@@ -65,19 +58,42 @@ class StoreTest {
         String getResponse=store.get(key);
         assertEquals(respSerializer.serializeBulkString(val),getResponse);
 
-        String setResponseNew=store.set(key,newVal,expiry*2);
+        String setResponseNew=store.set(key,newVal,expiry*4);
         assertEquals("+OK\r\n",setResponseNew);
 
         String getResponseNew=store.get(key);
         assertEquals(respSerializer.serializeBulkString(newVal),getResponseNew);
 
-        Thread.sleep(1500);
+        Thread.sleep(150);
         String getResponseAfterExpiry=store.get(key);
         assertEquals(respSerializer.serializeBulkString(newVal),getResponseAfterExpiry);
     }
 
     @Test
-    public void testConcurrentSetting() throws InterruptedException {
+    public void testActiveTtlPurge() throws InterruptedException {
+        store.set("tempKey", "val", 50);
+        assertEquals(1, store.getKeys().size());
+        Thread.sleep(80);
+        store.purgeExpiredKeys();
+        assertEquals(0, store.getKeys().size());
+    }
+
+    @Test
+    public void testListOperations() {
+        assertEquals(1, store.rpush("mylist", "a"));
+        assertEquals(2, store.rpush("mylist", "b"));
+        assertEquals(3, store.lpush("mylist", "first"));
+        assertEquals(3, store.llen("mylist"));
+
+        String[] range = store.lrange("mylist", 0, -1);
+        assertArrayEquals(new String[]{"first", "a", "b"}, range);
+
+        assertEquals("first", store.lpop("mylist"));
+        assertEquals(2, store.llen("mylist"));
+    }
+
+    @Test
+    public void testConcurrentSetting() {
         List<CompletableFuture<Void>> l=new ArrayList<>();
         for(int i=0;i<10;i++){
             int finalI = i;

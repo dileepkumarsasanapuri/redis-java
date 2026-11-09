@@ -27,9 +27,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static java.rmi.server.LogStream.log;
-
-
 @Component
 public class SlaveTcpServer {
 
@@ -99,7 +96,7 @@ public class SlaveTcpServer {
             outputStream.write(data);
             int bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
             String  resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
-            log("Received response from master: " + resp);
+            log.info("Received response from master: " + resp);
 
             // HANDSHAKE - part - 2: send the slave's port to the master
             String replconf= "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$"
@@ -110,7 +107,7 @@ public class SlaveTcpServer {
             outputStream.write(data);
             bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
             resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
-            log("Received response from master: " + resp);
+            log.info("Received response from master: " + resp);
 
             // HANDSHAKE - part - 2(b) : send the slave's protocol info to the master
 
@@ -121,7 +118,7 @@ public class SlaveTcpServer {
             outputStream.write(data);
             bytesRead = inputStream.read(inputBuffer,0,inputBuffer.length);
             resp=new String(inputBuffer,0,bytesRead, StandardCharsets.UTF_8);
-            log("Received response from master: " + resp);
+            log.info("Received response from master: " + resp);
 
             // HANDSHAKE - part - 3: sending PSYNC command to the master
             String psyncCommand = "*3\r\n$5\r\nPSYNC\r\n$" + String.valueOf("?".length()) + "\r\n?\r\n$" + String.valueOf("-1".length()) + "\r\n-1\r\n";
@@ -196,8 +193,8 @@ public class SlaveTcpServer {
             case "set":
                 commandHandler.set(commandArray);
                 String commandRespString= respSerializer.respArray(commandArray);
-                byte [] toCount= commandRespString.getBytes();
-                connectionPool.bytesSentToSlaves+=toCount.length;
+                byte [] toCount= commandRespString.getBytes(StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(toCount.length);
                 CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
                 break;
 
@@ -207,15 +204,15 @@ public class SlaveTcpServer {
             case "rpush":
                 res = commandHandler.rpush(commandArray);
                 String commandRespStringRpush=respSerializer.respArray(commandArray);
-                byte[] toCountRpush = commandRespStringRpush.getBytes();
-                connectionPool.bytesSentToSlaves+=toCountRpush.length;
+                byte[] toCountRpush = commandRespStringRpush.getBytes(StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(toCountRpush.length);
                 CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
                 break;
             case "lpush":
                 res = commandHandler.lpush(commandArray);
                 String commandRespStringLpush=respSerializer.respArray(commandArray);
-                byte[] toCountLpush = commandRespStringLpush.getBytes();
-                connectionPool.bytesSentToSlaves+=toCountLpush.length;
+                byte[] toCountLpush = commandRespStringLpush.getBytes(StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(toCountLpush.length);
                 CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
                 break;
         }
@@ -331,13 +328,13 @@ public class SlaveTcpServer {
                 data= resDto.data;
                 break;
             case "wait":
-                if(connectionPool.bytesSentToSlaves==0){
-                    res= respSerializer.respInteger(connectionPool.slavesThatareUp);
+                if(connectionPool.getBytesSentToSlaves()==0){
+                    res= respSerializer.respInteger(connectionPool.getSlavesThatAreUp());
                     break;
                 }
                 Instant now=Instant.now();
                 res= commandHandler.wait(command, now);
-                connectionPool.slavesThatareUp=0;
+                connectionPool.setSlavesThatAreUp(0);
                 break;
             case "subscribe":
                 res=commandHandler.subscribe(command,client);

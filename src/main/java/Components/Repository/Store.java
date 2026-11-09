@@ -29,9 +29,32 @@ public class Store {
     private RespSerializer respSerializer;
 
     public Store() {
+        this(new RespSerializer());
+    }
+
+    public Store(RespSerializer respSerializer) {
         this.map = new ConcurrentHashMap<>();
-        watchingClientsListForKeys= new ConcurrentHashMap<>();
-        failTransactionFor = ConcurrentHashMap.newKeySet();
+        this.watchingClientsListForKeys = new ConcurrentHashMap<>();
+        this.failTransactionFor = ConcurrentHashMap.newKeySet();
+        this.respSerializer = respSerializer;
+    }
+
+    public void purgeExpiredKeys() {
+        LocalDateTime now = LocalDateTime.now();
+        for (Map.Entry<String, Value> entry : map.entrySet()) {
+            Value val = entry.getValue();
+            if (val != null && val.expiresAt != null && val.expiresAt.isBefore(now)) {
+                rwLock.writeLock().lock();
+                try {
+                    Value current = map.get(entry.getKey());
+                    if (current != null && current.expiresAt != null && current.expiresAt.isBefore(now)) {
+                        map.remove(entry.getKey());
+                    }
+                } finally {
+                    rwLock.writeLock().unlock();
+                }
+            }
+        }
     }
 
     public boolean isWatchedKey(String key){
@@ -319,6 +342,18 @@ public class Store {
         }finally {
             rwLock.writeLock().unlock();
         }
-        return deque.pollFirst(timeOutMs, TimeUnit.MILLISECONDS);
+        String popped = deque.pollFirst(timeOutMs, TimeUnit.MILLISECONDS);
+        if (popped == null) {
+            rwLock.writeLock().lock();
+            try {
+                Value val = map.get(key);
+                if (val != null && val.list != null && val.list.isEmpty()) {
+                    map.remove(key);
+                }
+            } finally {
+                rwLock.writeLock().unlock();
+            }
+        }
+        return popped;
     }
 }

@@ -172,9 +172,9 @@ public class MasterTcpServer {
                     while(!commands.isEmpty()) {
                         String[] commandToPropagate = commands.poll();
                         String respArr = respSerializer.respArray(commandToPropagate);
-                        byte[] bytes = respArr.getBytes();
-                        connectionPool.bytesSentToSlaves += bytes.length;
-                        CompletableFuture.runAsync(() -> propagateToSlaves(command));
+                        byte[] bytes = respArr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        connectionPool.addBytesSentToSlaves(bytes.length);
+                        CompletableFuture.runAsync(() -> propagateToSlaves(commandToPropagate));
                     }
                     String response= respSerializer.respArray(client.transactionResponse);
                     client.send(response);
@@ -223,8 +223,8 @@ public class MasterTcpServer {
             case "set":
                 res=commandHandler.set(command);
                 String respArr= respSerializer.respArray(command);
-                byte [] bytes=respArr.getBytes();
-                connectionPool.bytesSentToSlaves+=bytes.length;
+                byte [] bytes=respArr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(bytes.length);
                 try {
                     CompletableFuture.runAsync(() -> propagateToSlaves(command));
                 } catch (Exception e) {
@@ -246,13 +246,13 @@ public class MasterTcpServer {
                 data= resDto.data;
                 break;
             case "wait":
-                if(connectionPool.bytesSentToSlaves==0){
-                    res= respSerializer.respInteger(connectionPool.slavesThatareUp);
+                if(connectionPool.getBytesSentToSlaves()==0){
+                    res= respSerializer.respInteger(connectionPool.getSlavesThatAreUp());
                     break;
                 }
                 Instant now=Instant.now();
                 res= commandHandler.wait(command, now);
-                connectionPool.slavesThatareUp=0;
+                connectionPool.setSlavesThatAreUp(0);
                 break;
             case "incr":
                 res= commandHandler.incr(command);
@@ -294,15 +294,15 @@ public class MasterTcpServer {
             case "rpush":
                 res = commandHandler.rpush(command);
                 String commandRespStringRpush=respSerializer.respArray(command);
-                byte[] toCountRpush = commandRespStringRpush.getBytes();
-                connectionPool.bytesSentToSlaves+=toCountRpush.length;
+                byte[] toCountRpush = commandRespStringRpush.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(toCountRpush.length);
                 CompletableFuture.runAsync(()-> propagateToSlaves(command));
                 break;
             case "lpush":
                 res = commandHandler.lpush(command);
                 String commandRespStringLpush=respSerializer.respArray(command);
-                byte[] toCountLpush = commandRespStringLpush.getBytes();
-                connectionPool.bytesSentToSlaves+=toCountLpush.length;
+                byte[] toCountLpush = commandRespStringLpush.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                connectionPool.addBytesSentToSlaves(toCountLpush.length);
                 CompletableFuture.runAsync(()-> propagateToSlaves(command));
                 break;
             case "lrange":
