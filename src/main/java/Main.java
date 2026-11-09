@@ -28,6 +28,15 @@ public class Main {
                   redisConfig.setMasterHost(masterHost);
                   redisConfig.setMasterPort(masterPort);
                   break;
+              case "--appendonly":
+                  redisConfig.setAofEnabled(args[i+1].equalsIgnoreCase("yes"));
+                  break;
+              case "--dir":
+                  redisConfig.setDir(args[i+1]);
+                  break;
+              case "--dbfilename":
+                  redisConfig.setDbFileName(args[i+1]);
+                  break;
           }
       }
       if(redisConfig.getRole().equalsIgnoreCase("slave")){

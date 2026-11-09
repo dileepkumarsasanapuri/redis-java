@@ -17,7 +17,7 @@ public class RedisConfig {
     private Long masterReplOffset = null;
     private String dir = ".";
     private String dbFileName = "dump.rdb";
-    private boolean aofEnabled = true;
+    private boolean aofEnabled = false;
     private String aofFileName = "appendonly.aof";
 
     public String getDir() {
