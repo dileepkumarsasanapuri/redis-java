@@ -1,11 +1,13 @@
 package Components.Server;
 
+import Components.Infra.AofManager;
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
 import Components.Repository.OptimisticLockException;
 import Components.Repository.Store;
 import Components.Repository.Value;
 import Components.Service.CommandHandler;
+import Components.Service.RedisCommand;
 import Components.Service.RespSerializer;
 import Components.Service.ResponseDto;
 import Config.RedisConfig;
@@ -41,6 +43,8 @@ public class MasterTcpServer {
     private ConnectionPool connectionPool;
     @Autowired
     private Store store;
+    @Autowired
+    private AofManager aofManager;
 
     private static final Logger log = LoggerFactory.getLogger(MasterTcpServer.class);
 
@@ -52,6 +56,7 @@ public class MasterTcpServer {
         ExecutorService executor= Executors.newCachedThreadPool();
         int port = redisConfig.getPort();
         try {
+            aofManager.loadAndReplay(commandHandler);
             serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
             int id=0;
@@ -111,90 +116,87 @@ public class MasterTcpServer {
     }
 
     private void handleCommandSubscribed(String[] command, Client client) throws IOException {
-        if(!isCommandSubscribeModelEligible(command[0])){
-            String errMsg="-ERR Can't execute '"+command[0].toLowerCase()+"':only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n";
+        RedisCommand cmd = RedisCommand.fromString(command[0]);
+        if (!cmd.isSubscribeEligible()) {
+            String errMsg = "-ERR Can't execute '" + command[0].toLowerCase() + "':only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n";
             client.send(errMsg);
             return;
         }
-        String res="";
-        switch (command[0].toLowerCase()){
-            case "subscribe":
-                res=commandHandler.subscribe(command,client);
+        String res = "";
+        switch (cmd) {
+            case SUBSCRIBE:
+                res = commandHandler.subscribe(command, client);
                 break;
-            case "unsubscribe":
-                res=commandHandler.unsubscribe(command,client);
+            case UNSUBSCRIBE:
+                res = commandHandler.unsubscribe(command, client);
                 break;
-            case "ping":
-                res="*2\r\n$4\r\npong\r\n$0\r\n\r\n";
+            case PING:
+                res = "*2\r\n$4\r\npong\r\n$0\r\n\r\n";
                 break;
             default:
-                res=command[0];
+                res = command[0];
                 break;
         }
         client.send(res);
     }
 
-    private boolean isCommandSubscribeModelEligible(String command){
-        return switch (command.toLowerCase()){
-            case "subscribe","unsubscribe","psubscribe","punsubscribe","ping","quit" -> true;
-            default -> false;
-        };
-    }
     private void handleCommand(String[] command, Client client) throws IOException {
-        if(!client.getTransactionalContext()){
-            ResponseDto responseDto= caseHandler(command,client);
+        RedisCommand cmd = RedisCommand.fromString(command[0]);
+        if (!client.getTransactionalContext()) {
+            ResponseDto responseDto = caseHandler(cmd, command, client);
             client.send(responseDto);
-        }
-        else if(!isTransactionalControlCommand(command[0])){ // not exec or not discard
-            addCommandToTransaction(command,client);
-        }else{
-            transactionalController(command,client);
+        } else if (!cmd.isTransactionalControl()) {
+            addCommandToTransaction(command, client);
+        } else {
+            transactionalController(cmd, command, client);
         }
     }
 
-    private void transactionalController(String[] command, Client client) throws IOException {
-        switch (command[0].toLowerCase()){
-            case "watch":
-                String res="-ERR WATCH inside MULTI is not allowed\r\n";
-                client.send(res);
+    private void transactionalController(RedisCommand cmd, String[] command, Client client) throws IOException {
+        switch (cmd) {
+            case WATCH:
+                client.send("-ERR WATCH inside MULTI is not allowed\r\n");
                 break;
-            case "exec":
-                if(client.commandQueue==null || client.commandQueue.isEmpty()){
+            case EXEC:
+                if (client.commandQueue == null || client.commandQueue.isEmpty()) {
                     client.send("*0\r\n");
                     client.endTransaction();
                     return;
                 }
-                Queue<String []> commands= new LinkedList<>(client.commandQueue);
+                Queue<String[]> commands = new LinkedList<>(client.commandQueue);
 
-                BiFunction<String [], Map<String, Value>,String> transactionCacheApplier= commandHandler.getTransactionaCommandCacheApplier(client);
-                try{
-                    store.executeTransaction(client,transactionCacheApplier);
-                    while(!commands.isEmpty()) {
+                BiFunction<String[], Map<String, Value>, String> transactionCacheApplier = commandHandler.getTransactionaCommandCacheApplier(client);
+                try {
+                    store.executeTransaction(client, transactionCacheApplier);
+                    while (!commands.isEmpty()) {
                         String[] commandToPropagate = commands.poll();
+                        aofManager.append(commandToPropagate);
                         String respArr = respSerializer.respArray(commandToPropagate);
                         byte[] bytes = respArr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                         connectionPool.addBytesSentToSlaves(bytes.length);
                         CompletableFuture.runAsync(() -> propagateToSlaves(commandToPropagate));
                     }
-                    String response= respSerializer.respArray(client.transactionResponse);
+                    String response = respSerializer.respArray(client.transactionResponse);
                     client.send(response);
-                }catch (OptimisticLockException e) {
+                } catch (OptimisticLockException e) {
                     client.send("*-1\r\n");
-                }finally {
+                } finally {
                     client.endTransaction();
                 }
                 break;
-            case "discard":
-                if(client.watchSet!=null){
-                    for(String key:client.watchSet){
-                        store.removeWatcherForKey(key,client);
+            case DISCARD:
+                if (client.watchSet != null) {
+                    for (String key : client.watchSet) {
+                        store.removeWatcherForKey(key, client);
                     }
                 }
-                if(store.failTransactionFor.contains(client.id)){
+                if (store.failTransactionFor.contains(client.id)) {
                     store.failTransactionFor.remove(client.id);
                 }
                 client.endTransaction();
                 client.send("+OK\r\n");
+                break;
+            default:
                 break;
         }
     }
@@ -204,124 +206,123 @@ public class MasterTcpServer {
         client.send("+QUEUED\r\n");
     }
 
-    private boolean isTransactionalControlCommand(String s) {
-        return (s.equalsIgnoreCase("exec")
-                || s.equalsIgnoreCase("discard")
-                || s.equalsIgnoreCase("watch"));
+    public ResponseDto caseHandler(String[] command, Client client) {
+        return caseHandler(RedisCommand.fromString(command[0]), command, client);
     }
 
-    public ResponseDto caseHandler(String[] command,Client client){
-        String res="";
-        byte [] data=null;
-        switch (command[0].toLowerCase()){
-            case "ping":
-                res=commandHandler.ping(command);
+    public ResponseDto caseHandler(RedisCommand cmd, String[] command, Client client) {
+        String res = "";
+        byte[] data = null;
+        switch (cmd) {
+            case PING:
+                res = commandHandler.ping(command);
                 break;
-            case "echo":
-                res=commandHandler.echo(command);
+            case ECHO:
+                res = commandHandler.echo(command);
                 break;
-            case "set":
-                res=commandHandler.set(command);
-                String respArr= respSerializer.respArray(command);
-                byte [] bytes=respArr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(bytes.length);
-                try {
-                    CompletableFuture.runAsync(() -> propagateToSlaves(command));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+            case SET:
+                res = commandHandler.set(command);
+                propagateWriteCommand(command);
                 break;
-            case "get":
-                res=commandHandler.get(command);
+            case GET:
+                res = commandHandler.get(command);
                 break;
-            case "info":
-                res=commandHandler.info(command);
+            case INFO:
+                res = commandHandler.info(command);
                 break;
-            case "replconf":
-                res=commandHandler.replconf(command,client);
+            case REPLCONF:
+                res = commandHandler.replconf(command, client);
                 break;
-            case "psync":
-                ResponseDto resDto=commandHandler.psync(command);
-                res=resDto.response;
-                data= resDto.data;
+            case PSYNC:
+                ResponseDto resDto = commandHandler.psync(command);
+                res = resDto.response;
+                data = resDto.data;
                 break;
-            case "wait":
-                if(connectionPool.getBytesSentToSlaves()==0){
-                    res= respSerializer.respInteger(connectionPool.getSlavesThatAreUp());
+            case WAIT:
+                if (connectionPool.getBytesSentToSlaves() == 0) {
+                    res = respSerializer.respInteger(connectionPool.getSlavesThatAreUp());
                     break;
                 }
-                Instant now=Instant.now();
-                res= commandHandler.wait(command, now);
+                Instant now = Instant.now();
+                res = commandHandler.wait(command, now);
                 connectionPool.setSlavesThatAreUp(0);
                 break;
-            case "incr":
-                res= commandHandler.incr(command);
+            case INCR:
+                res = commandHandler.incr(command);
+                if (!res.startsWith("-ERR")) {
+                    propagateWriteCommand(command);
+                }
                 break;
-            case "multi":
+            case MULTI:
                 client.beginTransaction();
-                res="+OK\r\n";
+                res = "+OK\r\n";
                 break;
-            case "exec":
+            case EXEC:
                 res = "-ERR EXEC without MULTI\r\n";
                 break;
-            case "discard":
-                res="-ERR DISCARD without MULTI\r\n";
+            case DISCARD:
+                res = "-ERR DISCARD without MULTI\r\n";
                 break;
-            case "watch":
-                res=commandHandler.watch(command,client);
+            case WATCH:
+                res = commandHandler.watch(command, client);
                 break;
-            case "unwatch":
-                if(client.watchSet!=null){
-                    for(String key:client.watchSet){
-                        store.removeWatcherForKey(key,client);
+            case UNWATCH:
+                if (client.watchSet != null) {
+                    for (String key : client.watchSet) {
+                        store.removeWatcherForKey(key, client);
                     }
                 }
-                if(store.failTransactionFor.contains(client.id)){
+                if (store.failTransactionFor.contains(client.id)) {
                     store.failTransactionFor.remove(client.id);
                 }
-                client.watchSet=null;
-                res="+OK\r\n";
+                client.watchSet = null;
+                res = "+OK\r\n";
                 break;
-            case "subscribe":
-                res=commandHandler.subscribe(command,client);
+            case SUBSCRIBE:
+                res = commandHandler.subscribe(command, client);
                 break;
-            case "unsubscribe":
-                res=commandHandler.unsubscribe(command,client);
+            case UNSUBSCRIBE:
+                res = commandHandler.unsubscribe(command, client);
                 break;
-            case "publish":
-                res=commandHandler.publish(command);
+            case PUBLISH:
+                res = commandHandler.publish(command);
                 break;
-            case "rpush":
+            case RPUSH:
                 res = commandHandler.rpush(command);
-                String commandRespStringRpush=respSerializer.respArray(command);
-                byte[] toCountRpush = commandRespStringRpush.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(toCountRpush.length);
-                CompletableFuture.runAsync(()-> propagateToSlaves(command));
+                propagateWriteCommand(command);
                 break;
-            case "lpush":
+            case LPUSH:
                 res = commandHandler.lpush(command);
-                String commandRespStringLpush=respSerializer.respArray(command);
-                byte[] toCountLpush = commandRespStringLpush.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(toCountLpush.length);
-                CompletableFuture.runAsync(()-> propagateToSlaves(command));
+                propagateWriteCommand(command);
                 break;
-            case "lrange":
-                res= commandHandler.lrange(command);
+            case LRANGE:
+                res = commandHandler.lrange(command);
                 break;
-            case "llen":
-                res=commandHandler.llen(command);
+            case LLEN:
+                res = commandHandler.llen(command);
                 break;
-            case "lpop":
-                res=commandHandler.lpop(command);
+            case LPOP:
+                res = commandHandler.lpop(command);
+                if (!res.equals("$-1\r\n") && !res.equals("")) {
+                    propagateWriteCommand(command);
+                }
                 break;
-            case "blpop":
-                res=commandHandler.blpop(command);
+            case BLPOP:
+                res = commandHandler.blpop(command);
                 break;
-
-
-
+            default:
+                res = "-ERR unknown command '" + command[0] + "'\r\n";
+                break;
         }
-        return new ResponseDto(res,data);
+        return new ResponseDto(res, data);
+    }
+
+    private void propagateWriteCommand(String[] command) {
+        aofManager.append(command);
+        String respArr = respSerializer.respArray(command);
+        byte[] bytes = respArr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        connectionPool.addBytesSentToSlaves(bytes.length);
+        CompletableFuture.runAsync(() -> propagateToSlaves(command));
     }
     private void propagateToSlaves(String[] command) {
         String commandRespStr= respSerializer.respArray(command);

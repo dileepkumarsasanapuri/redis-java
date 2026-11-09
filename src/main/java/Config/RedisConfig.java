@@ -14,7 +14,43 @@ public class RedisConfig {
     private String masterHost;
     private int masterPort;
     private String masterReplId = null;
-    private Long masterReplOffset=null;
+    private Long masterReplOffset = null;
+    private String dir = ".";
+    private String dbFileName = "dump.rdb";
+    private boolean aofEnabled = true;
+    private String aofFileName = "appendonly.aof";
+
+    public String getDir() {
+        return dir;
+    }
+
+    public void setDir(String dir) {
+        this.dir = dir;
+    }
+
+    public String getDbFileName() {
+        return dbFileName;
+    }
+
+    public void setDbFileName(String dbFileName) {
+        this.dbFileName = dbFileName;
+    }
+
+    public boolean isAofEnabled() {
+        return aofEnabled;
+    }
+
+    public void setAofEnabled(boolean aofEnabled) {
+        this.aofEnabled = aofEnabled;
+    }
+
+    public String getAofFileName() {
+        return aofFileName;
+    }
+
+    public void setAofFileName(String aofFileName) {
+        this.aofFileName = aofFileName;
+    }
 
     public String getRole() {
         return role;

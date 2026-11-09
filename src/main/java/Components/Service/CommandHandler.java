@@ -44,6 +44,28 @@ public class CommandHandler {
     @Autowired
     public ClientChannelPool clientChannelPool;
 
+    public CommandHandler() {}
+
+    public CommandHandler(RespSerializer respSerializer, Store store, RedisConfig redisConfig, ConnectionPool connectionPool, ClientChannelPool clientChannelPool) {
+        this.respSerializer = respSerializer;
+        this.store = store;
+        this.redisConfig = redisConfig;
+        this.connectionPool = connectionPool;
+        this.clientChannelPool = clientChannelPool;
+    }
+
+    public void setRespSerializer(RespSerializer respSerializer) {
+        this.respSerializer = respSerializer;
+    }
+
+    public void setStore(Store store) {
+        this.store = store;
+    }
+
+    public void setRedisConfig(RedisConfig redisConfig) {
+        this.redisConfig = redisConfig;
+    }
+
     public String ping(String []command){
         return "+PONG\r\n";
     }
@@ -224,23 +246,24 @@ public class CommandHandler {
             isOptimisticLockViolated(client);
             String res="";
             String key=command[1];
-            switch (command[0].toLowerCase()){
-                case "set":
+            RedisCommand cmd = RedisCommand.fromString(command[0]);
+            switch (cmd){
+                case SET:
                     if(this.store.isWatchedKey(key)){
                         this.store.addToFailTransactionForExcept(key,client);
                     }
                     res = handleSetCommandTransactional(command,map,localSerializer,localStore);
                     break;
-                case "get":
+                case GET:
                     res = handleGetCommandTransactional(command,map,localSerializer,localStore);
                     break;
-                case "incr":
+                case INCR:
                     if(this.store.isWatchedKey(key)){
                         this.store.addToFailTransactionForExcept(key,client);
                     }
                     res = handleIncrCommandTransactional(command,map,localSerializer,localStore);
                     break;
-                case "del":
+                case DEL:
                     if(this.store.isWatchedKey(key)){
                         this.store.addToFailTransactionForExcept(key,client);
                     }

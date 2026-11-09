@@ -3,6 +3,7 @@ package Components.Server;
 import Components.Infra.ConnectionPool;
 import Components.Infra.Slave;
 import Components.Service.CommandHandler;
+import Components.Service.RedisCommand;
 import Components.Service.RespSerializer;
 import Components.Service.ResponseDto;
 import Config.RedisConfig;
@@ -187,36 +188,35 @@ public class SlaveTcpServer {
     }
 
     private String handleCommandFromMaster(String[] commandArray, Client master) {
-        String cmd=commandArray[0].toLowerCase();
-        String res="";
+        RedisCommand cmd = RedisCommand.fromString(commandArray[0]);
+        String res = "";
         switch (cmd) {
-            case "set":
+            case SET:
                 commandHandler.set(commandArray);
-                String commandRespString= respSerializer.respArray(commandArray);
-                byte [] toCount= commandRespString.getBytes(StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(toCount.length);
-                CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
+                propagateWriteCommand(commandArray);
                 break;
-
-            case "replconf":
-                res=commandHandler.replconf(commandArray,master);
+            case REPLCONF:
+                res = commandHandler.replconf(commandArray, master);
                 break;
-            case "rpush":
+            case RPUSH:
                 res = commandHandler.rpush(commandArray);
-                String commandRespStringRpush=respSerializer.respArray(commandArray);
-                byte[] toCountRpush = commandRespStringRpush.getBytes(StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(toCountRpush.length);
-                CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
+                propagateWriteCommand(commandArray);
                 break;
-            case "lpush":
+            case LPUSH:
                 res = commandHandler.lpush(commandArray);
-                String commandRespStringLpush=respSerializer.respArray(commandArray);
-                byte[] toCountLpush = commandRespStringLpush.getBytes(StandardCharsets.UTF_8);
-                connectionPool.addBytesSentToSlaves(toCountLpush.length);
-                CompletableFuture.runAsync(()-> propagateToSlaves(commandArray));
+                propagateWriteCommand(commandArray);
+                break;
+            default:
                 break;
         }
         return res;
+    }
+
+    private void propagateWriteCommand(String[] commandArray) {
+        String commandRespString = respSerializer.respArray(commandArray);
+        byte[] toCount = commandRespString.getBytes(StandardCharsets.UTF_8);
+        connectionPool.addBytesSentToSlaves(toCount.length);
+        CompletableFuture.runAsync(() -> propagateToSlaves(commandArray));
     }
 
     private void propagateToSlaves(String[] command) {
@@ -304,30 +304,31 @@ public class SlaveTcpServer {
         };
     }
     private void handleCommand(String[] command, Client client) throws IOException {
+        RedisCommand cmd = RedisCommand.fromString(command[0]);
         String res="";
         byte [] data=null;
-        switch (command[0].toLowerCase()){
-            case "ping":
+        switch (cmd){
+            case PING:
                 res=commandHandler.ping(command);
                 break;
-            case "echo":
+            case ECHO:
                 res=commandHandler.echo(command);
                 break;
-            case "set":
+            case SET, RPUSH, LPUSH, LPOP:
                 res="-READONLY You can't write against a read only slave.\r\n";
                 break;
-            case "get":
+            case GET:
                 res=commandHandler.get(command);
                 break;
-            case "info":
+            case INFO:
                 res=commandHandler.info(command);
                 break;
-            case "psync":
+            case PSYNC:
                 ResponseDto resDto=commandHandler.psync(command);
                 res=resDto.response;
                 data= resDto.data;
                 break;
-            case "wait":
+            case WAIT:
                 if(connectionPool.getBytesSentToSlaves()==0){
                     res= respSerializer.respInteger(connectionPool.getSlavesThatAreUp());
                     break;
@@ -336,20 +337,22 @@ public class SlaveTcpServer {
                 res= commandHandler.wait(command, now);
                 connectionPool.setSlavesThatAreUp(0);
                 break;
-            case "subscribe":
+            case SUBSCRIBE:
                 res=commandHandler.subscribe(command,client);
                 break;
-            case "unsubscribe":
+            case UNSUBSCRIBE:
                 res=commandHandler.unsubscribe(command,client);
                 break;
-            case "lrange":
+            case LRANGE:
                 res= commandHandler.lrange(command);
                 break;
-            case "llen":
+            case LLEN:
                 res=commandHandler.llen(command);
                 break;
-
+            default:
+                res = "-ERR unknown command '" + command[0] + "'\r\n";
+                break;
         }
-      client.send(new ResponseDto(res,data));
+        client.send(new ResponseDto(res,data));
     }
 }
